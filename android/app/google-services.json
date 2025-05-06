@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "590290984500",
+    "project_id": "diwaapp-56163",
+    "storage_bucket": "diwaapp-56163.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:590290984500:android:0afa3a0a6753d032cef461",
+        "android_client_info": {
+          "package_name": "com.example.diwa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLhEf9A3AsJj4IRDmCsJKikOFHCPlP-eI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:590290984500:android:8368468c23827effcef461",
+        "android_client_info": {
+          "package_name": "com.example.diwa_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLhEf9A3AsJj4IRDmCsJKikOFHCPlP-eI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

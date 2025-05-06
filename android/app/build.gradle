@@ -1,0 +1,40 @@
+// ... existing code ...
+
+android {
+    // ... existing code ...
+
+    // Add these settings for better performance
+    buildTypes {
+        release {
+            // Enable R8 optimization
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Enable faster APK installation
+            zipAlignEnabled true
+        }
+        debug {
+            // Enable faster development builds
+            minifyEnabled false
+            
+            // Disable PNG crunching
+            crunchPngs false
+        }
+    }
+    
+    // Add build cache configuration
+    buildFeatures {
+        buildConfig true
+    }
+    
+    // Speed up build
+    dexOptions {
+        javaMaxHeapSize "4g"
+        preDexLibraries true
+    }
+    
+    // ... existing code ...
+}
+
+// ... existing code ...
