@@ -69,26 +69,19 @@ class _GamesSectionState extends State<GamesSection> {
       }
     }
   }
-
   String get _gamesTitle => widget.language == 'Filipino' ? 'MGA LARO' : 'GAMES';
-  String get _playText => widget.language == 'Filipino' ? 'MAGLARO' : 'PLAY';
-  String get _loginRequiredText => widget.language == 'Filipino' 
+  String get _playText => widget.language == 'Filipino' ? 'MAGLARO' : 'PLAY';  String get _loginRequiredText => widget.language == 'Filipino' 
       ? 'Kailangan mag-login upang makapaglaro' 
       : 'Login Required to Play Games';
   String get _loginDescriptionText => widget.language == 'Filipino'
       ? 'Mangyaring mag-login o gumawa ng isang account upang ma-access ang mga laro.'
       : 'Please log in or create an account to access games.';
   String get _loginButtonText => widget.language == 'Filipino' ? 'Mag-login' : 'Login';
-  String get _signupButtonText => widget.language == 'Filipino' ? 'Gumawa ng Account' : 'Create Account';
-  String get _welcomeText => widget.language == 'Filipino' ? 'Kamusta' : 'Hello';
-
   String _getLocalizedGameName(String englishName) {
     if (widget.language != 'Filipino') return englishName;
     
     switch (englishName) {
       case 'Definition Game': return 'Depinisyon';
-      case 'Word Guess Game': return 'Anong Salita?';
-      case 'Quiz Game': return 'Palaro ng Pagsusulit';
       case 'Baybayin Game': return 'Laro ng Baybayin';
       default: return englishName;
     }
@@ -133,20 +126,11 @@ class _GamesSectionState extends State<GamesSection> {
               ),
             ),
           ],
-        ),
-        toolbarHeight: isTablet ? 90 : 70,
+        ),        toolbarHeight: isTablet ? 90 : 70,
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         automaticallyImplyLeading: false,
-        actions: _isAuthenticated ? [
-          // Show user profile icon when authenticated
-          IconButton(
-            icon: const Icon(Icons.account_circle, color: Colors.brown),
-            onPressed: () => _showUserProfileDialog(context),
-            tooltip: widget.language == 'Filipino' ? 'Iyong Profile' : 'Your Profile',
-          ),
-        ] : null,
       ),
       body: _isLoading 
           ? _buildLoadingView() 
@@ -224,49 +208,7 @@ class _GamesSectionState extends State<GamesSection> {
   Widget _buildGamesGridView(bool isTablet, int crossAxisCount, EdgeInsets padding) {
     return Center(
       child: Column(
-        children: [
-          const SizedBox(height: 16),
-          // User welcome message when authenticated
-          if (_userName != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Card(
-                elevation: 2,
-                shadowColor: Colors.brown.withOpacity(0.2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.brown.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.brown,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        '$_welcomeText, $_userName!',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.brown,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 16),
+        children: [          const SizedBox(height: 16),
           // Enhanced header with shadow and animation
           TweenAnimationBuilder(
             tween: Tween<double>(begin: 0.95, end: 1.0),
@@ -303,8 +245,7 @@ class _GamesSectionState extends State<GamesSection> {
               );
             },
           ),
-          const SizedBox(height: 24),
-          Expanded(
+          const SizedBox(height: 24),          Expanded(
             child: Padding(
               padding: padding,
               child: ConstrainedBox(
@@ -319,8 +260,6 @@ class _GamesSectionState extends State<GamesSection> {
                   padding: const EdgeInsets.only(bottom: 24.0),
                   children: [
                     _buildGameCard(context, 'Definition Game', Icons.extension),
-                    _buildGameCard(context, 'Word Guess Game', Icons.grid_on),
-                    _buildGameCard(context, 'Quiz Game', Icons.question_answer),
                     _buildGameCard(context, 'Baybayin Game', Icons.translate),
                   ],
                 ),
@@ -344,22 +283,21 @@ class _GamesSectionState extends State<GamesSection> {
                 offset: const Offset(0, -2),
               ),
             ],
-          ),
-          child: BottomNavigationBar(
+          ),          child: BottomNavigationBar(
             currentIndex: 1,
             items: [
               BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
+                icon: const Icon(Icons.home_outlined),
                 activeIcon: const Icon(Icons.home),
                 label: widget.language == 'Filipino' ? 'Tahanan' : 'Home',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.videogame_asset_outlined),
+                icon: const Icon(Icons.videogame_asset_outlined),
                 activeIcon: const Icon(Icons.videogame_asset),
                 label: widget.language == 'Filipino' ? 'Laro' : 'Games',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
+                icon: const Icon(Icons.person_outline),
                 activeIcon: const Icon(Icons.person),
                 label: widget.language == 'Filipino' ? 'Propayl' : 'Profile',
               ),
@@ -382,83 +320,15 @@ class _GamesSectionState extends State<GamesSection> {
         );
       },
     );
-  }
-
-  // Navigation to login/signup screens
+  }  // Navigation to login/signup screens
   void _navigateToLogin(BuildContext context) {
     Navigator.pushNamed(context, '/login').then((_) {
       _checkAuthentication();
     });
   }
-
-  void _navigateToSignup(BuildContext context) {
-    Navigator.pushNamed(context, '/signup').then((_) {
-      _checkAuthentication();
-    });
-  }
   
-  Future<void> _showUserProfileDialog(BuildContext context) async {
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            widget.language == 'Filipino' ? 'Profile' : 'Profile',
-            style: const TextStyle(
-              color: Colors.brown,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.brown.withOpacity(0.2),
-                radius: 40,
-                child: const Icon(
-                  Icons.person,
-                  size: 40,
-                  color: Colors.brown,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _userName ?? 'User',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextButton.icon(
-                icon: const Icon(Icons.logout),
-                label: Text(widget.language == 'Filipino' ? 'Mag-logout' : 'Logout'),
-                onPressed: () {
-                  Navigator.pop(context); // Close dialog
-                  _logout();
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              child: Text(widget.language == 'Filipino' ? 'Isara' : 'Close'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-  
+  // Kept for potential future use
+  // ignore: unused_element
   Future<void> _logout() async {
     try {
       await UserState.instance.logout();

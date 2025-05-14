@@ -36,7 +36,8 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
   int _timeLeft = 20; // seconds for each question
   bool _isAnimating = false;
   late AnimationController _animController;
-  bool _lastAnswerCorrect = false; // Add this new variable to track the last answer
+  String? _selectedAnswer; // Add this variable to track selected answer
+  bool _answerChecked = false; // Add this variable to track if answer was checked
   
   // Use centralized data for the game
   final Map<String, String> _baybayinToFilipino = FilipinoWordsData.baybayinCharacters;
@@ -233,7 +234,8 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
     
     setState(() {
       _isAnimating = true;
-      _lastAnswerCorrect = isCorrect; // Set the flag based on answer correctness
+      _selectedAnswer = answer; // Store the selected answer
+      _answerChecked = true; // Mark that answer was checked
       
       if (isCorrect) {
         // Add points for correct answer (with bonus for faster answers)
@@ -267,6 +269,8 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
       if (mounted) {
         setState(() {
           _isAnimating = false;
+          _answerChecked = false; // Reset answer checked state
+          _selectedAnswer = null; // Reset selected answer
           
           if (!_gameOver && !_levelComplete) {
             _generateNewQuestion();
@@ -681,19 +685,19 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
               ),
               
               // Feedback display with improved styling
-              if (_isAnimating)
+              if (_answerChecked)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(top: 8),
                   decoration: BoxDecoration(
-                    color: _lastAnswerCorrect
+                    color: _selectedAnswer == _correctAnswer
                         ? Colors.green.shade50
                         : Colors.red.shade50,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: (_lastAnswerCorrect
+                        color: (_selectedAnswer == _correctAnswer
                             ? Colors.green 
                             : Colors.red).withOpacity(0.2),
                         blurRadius: 6,
@@ -701,7 +705,7 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
                       ),
                     ],
                     border: Border.all(
-                      color: _lastAnswerCorrect
+                      color: _selectedAnswer == _correctAnswer
                           ? Colors.green.withOpacity(0.3)
                           : Colors.red.withOpacity(0.3),
                       width: 1,
@@ -711,10 +715,10 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _lastAnswerCorrect
+                        _selectedAnswer == _correctAnswer
                             ? Icons.check_circle
                             : Icons.cancel,
-                        color: _lastAnswerCorrect
+                        color: _selectedAnswer == _correctAnswer
                             ? Colors.green
                             : Colors.red,
                         size: 20,
@@ -722,13 +726,13 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          _lastAnswerCorrect
+                          _selectedAnswer == _correctAnswer
                               ? _correctText
                               : '$_incorrectText $_correctAnswer',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: _lastAnswerCorrect
+                            color: _selectedAnswer == _correctAnswer
                                 ? Colors.green[700]
                                 : Colors.red[700],
                           ),

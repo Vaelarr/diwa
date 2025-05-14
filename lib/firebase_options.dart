@@ -33,44 +33,50 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyDrZRNim-amYbVriIpcri2kjsHxB44sPSY',
     authDomain: 'diwaapp-56163.firebaseapp.com',
+    databaseURL: 'https://diwaapp-56163-default-rtdb.firebaseio.com',
     projectId: 'diwaapp-56163',
     storageBucket: 'diwaapp-56163.firebasestorage.app',
     messagingSenderId: '590290984500',
-    appId: '1:590290984500:web:f60de2b8e371c823cef461',measurementId: 'G-F3GF92CQ53'
+    appId: '1:590290984500:web:f60de2b8e371c823cef461',
+    measurementId: 'G-F3GF92CQ53'
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBLhEf9A3AsJj4IRDmCsJKikOFHCPlP-eI',
     appId: '1:590290984500:android:0afa3a0a6753d032cef461',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    messagingSenderId: '590290984500',
     projectId: 'diwaapp-56163',
+    databaseURL: 'https://diwaapp-56163-default-rtdb.firebaseio.com',
     storageBucket: 'diwaapp-56163.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
-    iosClientId: 'YOUR_IOS_CLIENT_ID',
-    iosBundleId: 'YOUR_IOS_BUNDLE_ID',
+    apiKey: 'AIzaSyAqrfEKZPj9HfhVDXZp5zrKtswxTGIdTDY',
+    appId: '1:590290984500:ios:d23f1b1de3ab0a42cef461',
+    messagingSenderId: '590290984500',
+    projectId: 'diwaapp-56163',
+    databaseURL: 'https://diwaapp-56163-default-rtdb.firebaseio.com',
+    storageBucket: 'diwaapp-56163.firebasestorage.app',
+    iosClientId: '590290984500-qgtlm5rm6f5n3e3gn7q9kp1gghtpnd0v.apps.googleusercontent.com',
+    iosBundleId: 'com.example.diwa',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'YOUR_API_KEY',
-    appId: 'YOUR_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    storageBucket: 'YOUR_STORAGE_BUCKET',
-    iosClientId: 'YOUR_IOS_CLIENT_ID',
-    iosBundleId: 'YOUR_IOS_BUNDLE_ID',
+    apiKey: 'AIzaSyAqrfEKZPj9HfhVDXZp5zrKtswxTGIdTDY',
+    appId: '1:590290984500:ios:d23f1b1de3ab0a42cef461',
+    messagingSenderId: '590290984500',
+    projectId: 'diwaapp-56163',
+    databaseURL: 'https://diwaapp-56163-default-rtdb.firebaseio.com',
+    storageBucket: 'diwaapp-56163.firebasestorage.app',
+    iosClientId: '590290984500-qgtlm5rm6f5n3e3gn7q9kp1gghtpnd0v.apps.googleusercontent.com',
+    iosBundleId: 'com.example.diwa',
   );
   
   // Add Windows configuration
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyDrZRNim-amYbVriIpcri2kjsHxB44sPSY',
     authDomain: 'diwaapp-56163.firebaseapp.com',
+    databaseURL: 'https://diwaapp-56163-default-rtdb.firebaseio.com',
     projectId: 'diwaapp-56163',
     storageBucket: 'diwaapp-56163.firebasestorage.app',
     messagingSenderId: '590290984500',

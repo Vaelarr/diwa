@@ -21,6 +21,12 @@ class UserState {
   static final AuthService _authService = AuthService();
   static bool _isFirstLaunch = true;
   
+  // New achievement-related fields with default values of 0
+  static int _completedLessons = 0;
+  static int _achievements = 0;
+  static int _totalPoints = 0;
+  static int _wordsLearned = 0;
+  
   // Stream controllers for state changes
   static final StreamController<bool> _loginStateController = StreamController<bool>.broadcast();
   static final StreamController<String> _languageChangeController = StreamController<String>.broadcast();
@@ -35,6 +41,12 @@ class UserState {
   String get userFullName => _userFullName;
   String get preferredLanguage => _languagePreference;
   bool get isFirstLaunch => _isFirstLaunch;
+  
+  // Getters for achievement data
+  int get completedLessons => _completedLessons;
+  int get achievements => _achievements;
+  int get totalPoints => _totalPoints;
+  int get wordsLearned => _wordsLearned;
   
   // Stream to listen for login state changes
   Stream<bool> get loginState => _loginStateController.stream;
@@ -52,6 +64,12 @@ class UserState {
       _userFullName = prefs.getString('userFullName') ?? '';
       _languagePreference = prefs.getString('languagePreference') ?? 'English';
       _isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+      
+      // Initialize achievement data
+      _completedLessons = prefs.getInt('completedLessons') ?? 0;
+      _achievements = prefs.getInt('achievements') ?? 0;
+      _totalPoints = prefs.getInt('totalPoints') ?? 0;
+      _wordsLearned = prefs.getInt('wordsLearned') ?? 0;
       
       // Verify with Firebase if user is really logged in
       final currentUser = _authService.currentUser;
@@ -89,6 +107,8 @@ class UserState {
   
   // Set user ID
   Future<void> setUid(String value) async {
+    if (_uid == value) return;
+    
     _uid = value;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('uid', value);
@@ -109,23 +129,20 @@ class UserState {
   }
   
   // Set language preference (instance method)
-  Future<void> setLanguagePreference(String value) async {
-    if (_languagePreference == value) return;
+  Future<void> setLanguagePreference(String language) async {
+    if (_languagePreference == language) return;
     
-    _languagePreference = value;
+    _languagePreference = language;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('languagePreference', value);
+    await prefs.setString('languagePreference', language);
+    _languageChangeController.add(language);
     
-    // Notify listeners about language change
-    _languageChangeController.add(value);
-    
-    // Call all registered callbacks
-    for (var listener in _languageChangeListeners) {
+    // Notify all listeners
+    for (final listener in _languageChangeListeners) {
       listener();
     }
   }
   
-
   // Add a language change listener
   void addLanguageChangeListener(VoidCallback callback) {
     _languageChangeListeners.add(callback);
@@ -149,26 +166,46 @@ class UserState {
   Future<void> logout() async {
     try {
       await _authService.signOut();
+      await setLoggedIn(false);
+      await setUid('');
+      await setUserEmail('');
+      await setUserFullName('');
+      
+      // Reset achievements on logout
+      await resetAchievements();
     } catch (e) {
-      debugPrint('Error during Firebase signOut: $e');
+      debugPrint('Error during logout: $e');
     }
-    
-    // Clear user data regardless of Firebase signout success
-    await setLoggedIn(false);
-    await setUid('');
-    await setUserEmail('');
-    await setUserFullName('');
-    
-    // Keep language preference when logging out
   }
   
-  // Get current user name from Firebase (refreshed)
-  Future<String> getCurrentUserName() async {
+  // Reset all achievements to 0
+  Future<void> resetAchievements() async {
+    final prefs = await SharedPreferences.getInstance();
+    _completedLessons = 0;
+    _achievements = 0;
+    _totalPoints = 0;
+    _wordsLearned = 0;
+    
+    await prefs.setInt('completedLessons', 0);
+    await prefs.setInt('achievements', 0);
+    await prefs.setInt('totalPoints', 0);
+    await prefs.setInt('wordsLearned', 0);
+  }
+  
+  // Get current user name from Firebase (if available)
+  Future<String?> getCurrentUserName() async {
     try {
-      return await _authService.getCurrentUserName();
+      if (!_isLoggedIn || _uid.isEmpty) return null;
+      
+      final currentUser = _authService.currentUser;
+      if (currentUser != null && currentUser.displayName != null && currentUser.displayName!.isNotEmpty) {
+        return currentUser.displayName;
+      }
+      
+      return _userFullName.isNotEmpty ? _userFullName : null;
     } catch (e) {
       debugPrint('Error getting current user name: $e');
-      return _userFullName.isEmpty ? 'User' : _userFullName;
+      return null;
     }
   }
   
@@ -179,6 +216,103 @@ class UserState {
     } catch (e) {
       debugPrint('Error getting current user email: $e');
       return _userEmail;
+    }
+  }
+  
+  // Check if user exists (for signup validation)
+  Future<bool> checkIfUserExists(String email) async {
+    try {
+      return await _authService.checkIfUserExists(email);
+    } catch (e) {
+      debugPrint('Error checking if user exists: $e');
+      return false;
+    }
+  }
+  
+  // User registration
+  Future<bool> register(String name, String email, String password) async {
+    try {
+      final user = await _authService.registerWithEmailAndPassword(
+        email,
+        password,
+        userFullName,
+      );
+      
+      if (user != null) {
+        await setLoggedIn(true);
+        await setUid(user.uid);
+        await setUserEmail(user.email ?? '');
+        await setUserFullName(name);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error during registration: $e');
+      return false;
+    }
+  }
+  
+  // User login
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    try {
+      final user = await _authService.signInWithEmailAndPassword(
+        email,
+        password,
+      );
+      
+      if (user != null) {
+        await setLoggedIn(true);
+        await setUid(user.uid);
+        await setUserEmail(user.email ?? '');
+        
+        // Get display name if available
+        final displayName = user.displayName;
+        if (displayName != null && displayName.isNotEmpty) {
+          await setUserFullName(displayName);
+        } else {
+          // Try to fetch user profile to get the display name if it's not immediately available
+          try {
+            await user.reload();
+            final refreshedUser = _authService.currentUser;
+            if (refreshedUser?.displayName != null && refreshedUser!.displayName!.isNotEmpty) {
+              await setUserFullName(refreshedUser.displayName!);
+            }
+          } catch (e) {
+            debugPrint('Error refreshing user data: $e');
+          }
+        }
+        
+        return {'success': true, 'message': 'Login successful'};
+      }
+      return {'success': false, 'message': 'Login failed. Please try again.'};
+    } catch (e) {
+      debugPrint('Error during login: $e');
+      String errorMessage = 'An unexpected error occurred';
+      
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'user-not-found':
+            errorMessage = 'No user found with this email';
+            break;
+          case 'wrong-password':
+            errorMessage = 'Wrong password provided';
+            break;
+          case 'invalid-email':
+            errorMessage = 'The email address is not valid';
+            break;
+          case 'user-disabled':
+            errorMessage = 'This user account has been disabled';
+            break;
+          case 'too-many-requests':
+            errorMessage = 'Too many login attempts. Please try again later';
+            break;
+          case 'network-request-failed':
+            errorMessage = 'Network error. Please check your connection';
+            break;
+        }
+      }
+      
+      return {'success': false, 'message': errorMessage, 'error': e.toString()};
     }
   }
   
@@ -198,8 +332,84 @@ class UserState {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('lesson_$lessonId', true);
+      
+      // Update completed lessons count
+      _completedLessons++;
+      await prefs.setInt('completedLessons', _completedLessons);
+      
+      // Add points for completing a lesson
+      await addPoints(10);
     } catch (e) {
       debugPrint('Error marking lesson as completed: $e');
+    }
+  }
+  
+  // Get completedLessons count
+  Future<int> getCompletedLessonsCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('completedLessons') ?? 0;
+    } catch (e) {
+      debugPrint('Error getting completed lessons count: $e');
+      return 0;
+    }
+  }
+  
+  // Add achievement
+  Future<void> unlockAchievement() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _achievements++;
+      await prefs.setInt('achievements', _achievements);
+      
+      // Add points for unlocking an achievement
+      await addPoints(15);
+    } catch (e) {
+      debugPrint('Error adding achievement: $e');
+    }
+  }
+  
+  // Get achievements count
+  Future<int> getAchievementsCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('achievements') ?? 0;
+    } catch (e) {
+      debugPrint('Error getting achievements count: $e');
+      return 0;
+    }
+  }
+  
+  // Add points to total
+  Future<void> addPoints(int points) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _totalPoints += points;
+      await prefs.setInt('totalPoints', _totalPoints);
+    } catch (e) {
+      debugPrint('Error adding points: $e');
+    }
+  }
+  
+  // Get total points
+  Future<int> getTotalPoints() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('totalPoints') ?? 0;
+    } catch (e) {
+      debugPrint('Error getting total points: $e');
+      return 0;
+    }
+  }
+  
+  // Get words learned count
+  Future<int> getWordsLearnedCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('wordsLearned') ?? 0;
+    } catch (e) {
+      debugPrint('Error getting words learned count: $e');
+      return 0;
     }
   }
   
@@ -229,6 +439,10 @@ class UserState {
       if (!savedWords.contains(word)) {
         savedWords.add(word);
         await prefs.setStringList('saved_words_$_uid', savedWords);
+        
+        // Update words learned count
+        _wordsLearned++;
+        await prefs.setInt('wordsLearned', _wordsLearned);
       }
     } catch (e) {
       debugPrint('Error saving word: $e');
@@ -275,43 +489,6 @@ class UserState {
     } catch (e) {
       debugPrint('Error getting saved words: $e');
       return [];
-    }
-  }
-  
-  // Register new user with email and password
-  Future<bool> register(String fullName, String email, String password) async {
-    try {
-      final user = await _authService.registerWithEmailAndPassword(
-        email,
-        password,
-        fullName,
-      );
-      
-      if (user != null) {
-        await setLoggedIn(true);
-        await setUid(user.uid);
-        await setUserEmail(user.email ?? '');
-        await setUserFullName(user.displayName ?? fullName);
-        await setLanguagePreference('English'); // Default language preference
-        
-        debugPrint('User registered successfully: ${user.uid}');
-        return true;
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Error during registration: $e');
-      return false;
-    }
-  }
-  
-  // Check if a user with the given email already exists
-  Future<bool> checkIfUserExists(String email) async {
-    try {
-      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-      return methods.isNotEmpty;
-    } catch (e) {
-      debugPrint('Error checking if user exists: $e');
-      return false; // Assume user doesn't exist if we can't check
     }
   }
   

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../user_state.dart'; // Replace AuthService with UserState
+import '../user_state.dart';
 import '../services/score_service.dart';
+import '../services/progress_service.dart'; // Add this import
 import '../main.dart';
-import 'word_guess_game.dart';
-import 'quiz_game.dart';
 import 'definition_game.dart';
 import 'baybayin_game.dart';
 
@@ -23,9 +22,11 @@ class GameManager extends StatefulWidget {
 
 class _GameManagerState extends State<GameManager> {
   bool _isLoading = true;
+  bool _isLoadingProgress = false; // Add this field
   bool _isAuthenticated = false;
   String? _userName;
   ScoreService scoreService = ScoreService();
+  Map<String, dynamic> _gameProgressData = {}; // Add this field
 
   @override
   void initState() {
@@ -58,6 +59,9 @@ class _GameManagerState extends State<GameManager> {
           _userName = UserState.instance.userFullName;
         }
         
+        // Load game progress from Firebase
+        await _loadGameProgress();
+        
         // If there's an initial game type specified, navigate directly to that game
         if (widget.initialGameType != null && mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -75,19 +79,74 @@ class _GameManagerState extends State<GameManager> {
     }
   }
   
+  // New method to load game progress from Firebase
+  Future<void> _loadGameProgress() async {
+    if (!UserState.instance.isLoggedIn) return;
+    
+    setState(() {
+      _isLoadingProgress = true;
+    });
+    
+    try {
+      final progress = await ProgressService.instance.getAllGameProgress();
+      if (mounted) {
+        setState(() {
+          _gameProgressData = progress;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading game progress: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProgress = false;
+        });
+      }
+    }
+  }
+  
+  // Method to get progress for a specific game
+  double _getGameProgress(String gameType) {
+    if (!UserState.instance.isLoggedIn || _gameProgressData.isEmpty) {
+      return 0.0;
+    }
+    
+    if (_gameProgressData.containsKey(gameType)) {
+      final gameData = _gameProgressData[gameType];
+      if (gameData is Map && gameData.containsKey('progress')) {
+        return (gameData['progress'] as num).toDouble();
+      }
+    }
+    
+    return 0.0;
+  }
+  
+  // Method to get high score for a specific game
+  int _getGameHighScore(String gameType) {
+    if (!UserState.instance.isLoggedIn || _gameProgressData.isEmpty) {
+      return 0;
+    }
+    
+    if (_gameProgressData.containsKey(gameType)) {
+      final gameData = _gameProgressData[gameType];
+      if (gameData is Map && gameData.containsKey('highScore')) {
+        return gameData['highScore'] as int;
+      }
+    }
+    
+    return 0;
+  }
+  
   // Helper to get the appropriate game builder based on the game type
   Widget Function() _getGameBuilder(String gameType) {
     switch (gameType) {
-      case 'Word Guess Game':
-        return () => WordGuessGame(language: widget.language);
-      case 'Quiz Game':
-        return () => QuizGame(language: widget.language);
       case 'Definition Game':
         return () => DefinitionGame(language: widget.language);
       case 'Baybayin Game':
         return () => BaybayinGame(language: widget.language);
       default:
-        return () => WordGuessGame(language: widget.language); // Default
+        // Return a default game or throw an exception
+        return () => DefinitionGame(language: widget.language); // Use Definition Game as default
     }
   }
 
@@ -255,26 +314,8 @@ class _GameManagerState extends State<GameManager> {
   }
 
   Scaffold _buildGameSelectionScreen(bool isTablet) {
-    // Define game options
+    // Define game options with progress data from Firebase
     final gameOptions = [
-      {
-        'title': widget.language == 'Filipino' ? 'Hulaan ang Salita' : 'Word Guess Game',
-        'icon': Icons.text_fields,
-        'color': Colors.blue,
-        'route': () => WordGuessGame(language: widget.language),
-        'description': widget.language == 'Filipino'
-            ? 'Hulaan ang mga salitang Filipino batay sa ibinigay na kahulugan.'
-            : 'Guess Filipino words based on given meanings.'
-      },
-      {
-        'title': widget.language == 'Filipino' ? 'Palaro ng Pagsusulit' : 'Quiz Game',
-        'icon': Icons.quiz,
-        'color': Colors.green,
-        'route': () => QuizGame(language: widget.language),
-        'description': widget.language == 'Filipino'
-            ? 'Subukin ang iyong kaalaman tungkol sa wikang Filipino.'
-            : 'Test your knowledge about the Filipino language.'
-      },
       {
         'title': widget.language == 'Filipino' ? 'Laro ng Depinisyon' : 'Definition Game',
         'icon': Icons.menu_book,
@@ -282,7 +323,9 @@ class _GameManagerState extends State<GameManager> {
         'route': () => DefinitionGame(language: widget.language),
         'description': widget.language == 'Filipino'
             ? 'Piliin ang tamang salin batay sa depinisyon.'
-            : 'Choose the correct translation based on the definition.'
+            : 'Choose the correct translation based on the definition.',
+        'progress': _getGameProgress('Definition Game'),
+        'highScore': _getGameHighScore('Definition Game'),
       },
       {
         'title': widget.language == 'Filipino' ? 'Hulaan ang Baybayin' : 'Baybayin Game',
@@ -291,7 +334,20 @@ class _GameManagerState extends State<GameManager> {
         'route': () => BaybayinGame(language: widget.language),
         'description': widget.language == 'Filipino'
             ? 'Pag-aralan at subukan ang iyong kaalaman sa baybayin.'
-            : 'Learn and test your knowledge of the baybayin writing system.'
+            : 'Learn and test your knowledge of the baybayin writing system.',
+        'progress': _getGameProgress('Baybayin Game'),
+        'highScore': _getGameHighScore('Baybayin Game'),
+      },
+      {
+        'title': widget.language == 'Filipino' ? 'Mga Aralin' : 'Lessons',
+        'icon': Icons.school,
+        'color': Colors.green,
+        'route': () => Navigator.pushNamed(context, '/lessons', arguments: {'language': widget.language}),
+        'description': widget.language == 'Filipino'
+            ? 'Pag-aralan ang mga pangunahing konsepto ng wikang Filipino.'
+            : 'Learn the fundamental concepts of the Filipino language.',
+        'progress': 0.0, // Default progress
+        'highScore': 0, // Default high score
       },
     ];
 
@@ -345,110 +401,114 @@ class _GameManagerState extends State<GameManager> {
       ),
       backgroundColor: const Color(0xFFF8F4E1),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(isTablet ? 24.0 : 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome section
-                Card(
-                  elevation: 2,
-                  shadowColor: Colors.brown.withOpacity(0.3),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.brown.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.gamepad,
-                            color: Colors.brown,
-                            size: 28,
-                          ),
+        child: _isLoadingProgress
+            ? const Center(child: CircularProgressIndicator(color: Colors.brown))
+            : SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(isTablet ? 24.0 : 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Welcome section
+                      Card(
+                        elevation: 2,
+                        shadowColor: Colors.brown.withOpacity(0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
                             children: [
-                              Text(
-                                widget.language == 'Filipino'
-                                    ? 'Kamusta, $_userName!'
-                                    : 'Hello, $_userName!',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.brown.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.gamepad,
                                   color: Colors.brown,
+                                  size: 28,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                widget.language == 'Filipino'
-                                    ? 'Piliin ang isang laro para magsimula!'
-                                    : 'Choose a game to start playing!',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.brown[600],
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.language == 'Filipino'
+                                          ? 'Kamusta, $_userName!'
+                                          : 'Hello, $_userName!',
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.brown,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      widget.language == 'Filipino'
+                                          ? 'Piliin ang isang laro para magsimula!'
+                                          : 'Choose a game to start playing!',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.brown[600],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Games title header
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, bottom: 12.0),
+                        child: Text(
+                          widget.language == 'Filipino' ? 'MGA LARO' : 'GAMES',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.brown,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      
+                      // Game options grid with progress from Firebase
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isTablet ? 2 : 1,
+                          childAspectRatio: isTablet ? 1.5 : 1.3,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                        itemCount: gameOptions.length,
+                        itemBuilder: (context, index) {
+                          final game = gameOptions[index];
+                          return _buildGameCard(
+                            title: game['title'] as String,
+                            icon: game['icon'] as IconData,
+                            color: game['color'] as Color,
+                            description: game['description'] as String,
+                            progress: game['progress'] as double,
+                            highScore: game['highScore'] as int,
+                            onTap: () => _navigateToGame(context, game['route'] as Widget Function()),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
-                
-                const SizedBox(height: 24),
-                
-                // Games title header
-                Padding(
-                  padding: const EdgeInsets.only(left: 4.0, bottom: 12.0),
-                  child: Text(
-                    widget.language == 'Filipino' ? 'MGA LARO' : 'GAMES',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.brown,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-                
-                // Game options grid
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isTablet ? 2 : 1,
-                    childAspectRatio: isTablet ? 1.5 : 1.3,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: gameOptions.length,
-                  itemBuilder: (context, index) {
-                    final game = gameOptions[index];
-                    return _buildGameCard(
-                      title: game['title'] as String,
-                      icon: game['icon'] as IconData,
-                      color: game['color'] as Color,
-                      description: game['description'] as String,
-                      onTap: () => _navigateToGame(context, game['route'] as Widget Function()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -458,6 +518,8 @@ class _GameManagerState extends State<GameManager> {
     required IconData icon,
     required Color color,
     required String description,
+    required double progress,
+    required int highScore,
     required VoidCallback onTap,
   }) {
     return Card(
@@ -521,6 +583,69 @@ class _GameManagerState extends State<GameManager> {
                   color: Colors.brown[600],
                 ),
               ),
+              const SizedBox(height: 12),
+              
+              // High score display
+              if (highScore > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${widget.language == 'Filipino' ? 'Pinakamataas: ' : 'High Score: '}$highScore',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              
+              const Spacer(),
+              
+              // Progress section
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        widget.language == 'Filipino' ? 'Pag-unlad' : 'Progress',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.brown[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.brown[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: color.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    minHeight: 6,
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -528,7 +653,6 @@ class _GameManagerState extends State<GameManager> {
     );
   }
 
-  // Navigation methods
   void _navigateToLogin(BuildContext context) {
     // Navigate to login page
     // After successful login, return to this screen which will re-check authentication

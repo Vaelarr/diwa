@@ -27,13 +27,18 @@ class _ProfileSectionState extends State<ProfileSection> {
   String _selectedLanguage = 'English';
   String _tempSelectedLanguage = 'English'; // Temporary variable for language selection
   double _fontSize = 16.0;
+  
+  // Add achievement-related state variables
+  int _completedLessons = 0;
+  int _achievements = 0;
+  int _totalPoints = 0;
+  int _wordsLearned = 0;
 
   // Add language change listener reference
   late VoidCallback _languageChangeListener;
 
   // Add a field to track language changes and force updates
   bool _forceRebuild = false;
-
   @override
   void initState() {
     super.initState();
@@ -42,6 +47,9 @@ class _ProfileSectionState extends State<ProfileSection> {
 
     // Initialize font size from UserState
     _loadFontSizePreference();
+    
+    // Load achievement data from UserState
+    _loadAchievementData();
 
     // Set up listener for language changes from UserState
     _languageChangeListener = () {
@@ -60,15 +68,35 @@ class _ProfileSectionState extends State<ProfileSection> {
     // Initialize language from UserState on load
     _syncLanguageWithUserState();
   }
+    // Load achievement data from UserState
+  Future<void> _loadAchievementData() async {
+    if (!UserState.instance.isLoggedIn) return;
+    
+    try {
+      final completedLessons = await UserState.instance.getCompletedLessonsCount();
+      final achievements = await UserState.instance.getAchievementsCount();
+      final totalPoints = await UserState.instance.getTotalPoints();
+      final wordsLearned = await UserState.instance.getWordsLearnedCount();
+      
+      if (mounted) {
+        setState(() {
+          _completedLessons = completedLessons;
+          _achievements = achievements;
+          _totalPoints = totalPoints;
+          _wordsLearned = wordsLearned;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading achievement data: $e');
+    }
+  }
 
   @override
   void dispose() {
     // Clean up by removing the listener when widget is disposed
     UserState.instance.removeLanguageChangeListener(_languageChangeListener);
     super.dispose();
-  }
-
-  // Override didUpdateWidget to handle language changes from parent
+  }  // Override didUpdateWidget to handle language changes from parent
   @override
   void didUpdateWidget(ProfileSection oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -77,6 +105,21 @@ class _ProfileSectionState extends State<ProfileSection> {
         _selectedLanguage = widget.language;
         _tempSelectedLanguage = widget.language;
       });
+    }
+    
+    // When widget updates, refresh the achievement data if user is logged in
+    if (UserState.instance.isLoggedIn) {
+      _loadAchievementData();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Refresh achievement data whenever we navigate back to this screen
+    if (UserState.instance.isLoggedIn) {
+      _loadAchievementData();
     }
   }
 
@@ -159,9 +202,7 @@ class _ProfileSectionState extends State<ProfileSection> {
   String get _achievementsText =>
       widget.language == 'Filipino' ? 'Mga Tagumpay' : 'Achievements';
   String get _totalPointsText =>
-      widget.language == 'Filipino' ? 'Kabuuang Puntos' : 'Total Points';
-
-  @override
+      widget.language == 'Filipino' ? 'Kabuuang Puntos' : 'Total Points';  @override
   Widget build(BuildContext context) {
     // Reset force rebuild flag
     _forceRebuild = false;
@@ -169,6 +210,11 @@ class _ProfileSectionState extends State<ProfileSection> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = ResponsiveUtil.isTablet(context);
     final padding = ResponsiveUtil.getResponsivePadding(context: context);
+    
+    // Load achievement data when the widget is built
+    if (UserState.instance.isLoggedIn) {
+      _loadAchievementData();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -379,9 +425,14 @@ class _ProfileSectionState extends State<ProfileSection> {
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/login');
+                    ),                    onPressed: () async {
+                      // Navigate to login page
+                      await Navigator.pushNamed(context, '/login');
+                      
+                      // Refresh achievement data when returned from login screen
+                      if (UserState.instance.isLoggedIn) {
+                        _loadAchievementData();
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.brown,
@@ -405,9 +456,14 @@ class _ProfileSectionState extends State<ProfileSection> {
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/create_account');
+                    ),                    onPressed: () async {
+                      // Navigate to create account page
+                      await Navigator.pushNamed(context, '/create_account');
+                      
+                      // Refresh achievement data when returned from create account screen
+                      if (UserState.instance.isLoggedIn) {
+                        _loadAchievementData();
+                      }
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.brown,
@@ -425,7 +481,6 @@ class _ProfileSectionState extends State<ProfileSection> {
       ),
     );
   }
-
   Future<void> _handleLogout() async {
     final shouldLogout = await showDialog<bool>(
           context: context,
@@ -465,9 +520,18 @@ class _ProfileSectionState extends State<ProfileSection> {
           child: CircularProgressIndicator(color: Colors.brown),
         ),
       );
-      
-      // Perform logout
+        // Perform logout
       await UserState.instance.logout();
+      
+      // Reset achievement data in UI
+      if (mounted) {
+        setState(() {
+          _completedLessons = 0;
+          _achievements = 0;
+          _totalPoints = 0;
+          _wordsLearned = 0;
+        });
+      }
 
       // Wait briefly to simulate processing
       await Future.delayed(const Duration(milliseconds: 500));
@@ -493,7 +557,6 @@ class _ProfileSectionState extends State<ProfileSection> {
 
   Widget _buildLoggedInView(bool isTablet, EdgeInsets padding) {
     // Get sample statistics based on the word data
-    final totalWords = FilipinoWordsData.words.length;
     final easyWords = FilipinoWordsData.getWordsByDifficulty('easy').length;
 
     return ListView(
@@ -646,32 +709,31 @@ class _ProfileSectionState extends State<ProfileSection> {
                   childAspectRatio: isTablet ? 3 : 2.5,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,
-                  children: [
-                    _buildStatCard(
+                  children: [                    _buildStatCard(
                       icon: Icons.book,
                       title: _wordsLearnedText,
-                      value: (easyWords ~/ 2).toString(),
+                      value: _wordsLearned.toString(),
                       color: Colors.green,
                       total: easyWords,
                     ),
                     _buildStatCard(
                       icon: Icons.school,
                       title: _completedLessonsText,
-                      value: '3',
+                      value: _completedLessons.toString(),
                       color: Colors.blue,
                       total: 10,
                     ),
                     _buildStatCard(
                       icon: Icons.emoji_events,
                       title: _achievementsText,
-                      value: '2',
+                      value: _achievements.toString(),
                       color: Colors.amber,
                       total: 8,
                     ),
                     _buildStatCard(
                       icon: Icons.star,
                       title: _totalPointsText,
-                      value: '120',
+                      value: _totalPoints.toString(),
                       color: Colors.purple,
                     ),
                   ],

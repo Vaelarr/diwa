@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data/filipino_words_data.dart';
 import '../user_state.dart';
 import 'word_details_page.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Add this import
 
 class HomeSection extends StatefulWidget {
   final String language;
@@ -20,6 +21,8 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
   late PageController _pageController;
   List<String> _featuredWords = [];
   late AnimationController _animController;
+  double _overallProgress = 0.0;
+  bool _isLoadingProgress = true; // Changed to true initially
 
   @override
   void initState() {
@@ -34,6 +37,50 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+
+    // Load progress from local storage
+    _loadProgressFromLocalStorage();
+  }
+
+  // Add this method to load progress from local storage
+  Future<void> _loadProgressFromLocalStorage() async {
+    try {
+      setState(() => _isLoadingProgress = true);
+      final prefs = await SharedPreferences.getInstance();
+      final progress = prefs.getDouble('user_progress') ?? 0.0;
+
+      setState(() {
+        _overallProgress = progress;
+        _isLoadingProgress = false;
+      });
+
+      print('Progress loaded from local storage: $_overallProgress');
+    } catch (e) {
+      print('Error loading progress from local storage: $e');
+      setState(() {
+        _overallProgress = 0.0;
+        _isLoadingProgress = false;
+      });
+    }
+  }
+
+  // Add this method to save progress to local storage
+  Future<void> _saveProgressToLocalStorage(double progress) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('user_progress', progress);
+      print('Progress saved to local storage: $progress');
+    } catch (e) {
+      print('Error saving progress to local storage: $e');
+    }
+  }
+
+  // This method can be called when progress changes
+  void updateProgress(double newProgress) {
+    setState(() {
+      _overallProgress = newProgress;
+    });
+    _saveProgressToLocalStorage(newProgress);
   }
 
   @override
@@ -91,37 +138,33 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
     }
   }
 
-  String get _welcomeText => widget.language == 'Filipino'
-      ? 'Maligayang pagdating sa'
-      : 'Welcome to';
+  String get _welcomeText => widget.language == 'English'
+      ? 'Welcome to'
+      : 'Maligayang pagdating sa';
 
-  String get _taglineText => widget.language == 'Filipino'
-      ? 'Ang iyong gabay sa pag-aaral ng Filipino'
-      : 'Your guide to learning Filipino';
+  String get _taglineText => widget.language == 'English'
+      ? 'Your guide to learning Filipino'
+      : 'Ang iyong gabay sa pag-aaral ng Filipino';
 
-  String get _featuredWordsText => widget.language == 'Filipino'
-      ? 'Mga Salitang Pantangi'
-      : 'Featured Words';
+  String get _featuredWordsText => widget.language == 'English'
+      ? 'Featured Words'
+      : 'Mga Salitang Pantangi';
 
-  String get _exploreText => widget.language == 'Filipino'
-      ? 'Galugarin ang DIWA'
-      : 'Explore DIWA';
+  String get _exploreText => widget.language == 'English'
+      ? 'Explore DIWA'
+      : 'Siyasatin ang DIWA';
 
-  String get _learnSectionText => widget.language == 'Filipino'
-      ? 'Mga Aralin'
-      : 'Lessons';
+  String get _learnSectionText => widget.language == 'English'
+      ? 'Lessons'
+      : 'Mga Aralin';
 
-  String get _gamesSectionText => widget.language == 'Filipino'
-      ? 'Mga Laro'
-      : 'Games';
+  String get _progressText => widget.language == 'English'
+      ? 'Your Progress'
+      : 'Ang Iyong Progreso';
 
-  String get _progressText => widget.language == 'Filipino'
-      ? 'Iyong Progreso'
-      : 'Your Progress';
-
-  String get _continueText => widget.language == 'Filipino'
-      ? 'Magpatuloy'
-      : 'Continue';
+  String get _continueText => widget.language == 'English'
+      ? 'Continue'
+      : 'Magpatuloy';
 
   @override
   Widget build(BuildContext context) {
@@ -438,9 +481,9 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
             child: Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text(
-                widget.language == 'Filipino' 
-                    ? 'Mag-swipe para makita ang iba pa' 
-                    : 'Swipe to see more',
+                widget.language == 'English' 
+                    ? 'Swipe to see more' 
+                    : 'Mag-swipe para makita ang iba pa',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[600],
@@ -552,7 +595,7 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Text(
-                        widget.language == 'Filipino' ? 'Dagdagan' : 'Learn more',
+                        widget.language == 'English' ? 'Learn more' : 'Matuto pa',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.brown[600],
@@ -676,9 +719,9 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
             const SizedBox(height: 16),
             if (!UserState.instance.isLoggedIn) ...[
               Text(
-                widget.language == 'Filipino'
-                    ? 'Kailangan ng isang account upang subaybayan ang iyong progreso'
-                    : 'An account is needed to track your progress',
+                widget.language == 'English'
+                    ? 'An account is needed to track your progress'
+                    : 'Kailangan ng isang account upang subaybayan ang iyong progreso',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -703,15 +746,24 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
                   ),
                 ),
                 child: Text(
-                  widget.language == 'Filipino' ? 'Pumunta ng Profile' : 'Go to Profile',
+                  widget.language == 'English' ? 'Go to Profile' : 'Pumunta sa Profile',
                   overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ] else if (_isLoadingProgress) ...[
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CircularProgressIndicator(
+                    color: Colors.purple,
+                  ),
                 ),
               ),
             ] else ...[
               LinearProgressIndicator(
-                value: 0.3,
+                value: _overallProgress,
                 backgroundColor: Colors.grey[200],
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.purple),
                 minHeight: 8,
               ),
               const SizedBox(height: 12),
@@ -719,7 +771,7 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '30% ${widget.language == 'Filipino' ? 'Kumpleto' : 'Complete'}',
+                    '${(_overallProgress * 100).toInt()}% ${widget.language == 'English' ? 'Complete' : 'Kumpleto'}',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[700],
@@ -729,9 +781,9 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
                   ),
                   Flexible(
                     child: Text(
-                      widget.language == 'Filipino'
-                          ? 'Huling natapos: Bokabularyo'
-                          : 'Last completed: Vocabulary',
+                      widget.language == 'English'
+                          ? 'Demo progress (tracking disabled)'
+                          : 'Demo ng progreso (nakapatay ang tracking)',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[700],
@@ -788,20 +840,20 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
       ),
       child: BottomNavigationBar(
         items: [
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
-            activeIcon: const Icon(Icons.home),
-            label: widget.language == 'Filipino' ? 'Tahanan' : 'Home',
+            activeIcon: Icon(Icons.home),
+            label: 'Home',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.videogame_asset_outlined),
-            activeIcon: const Icon(Icons.videogame_asset),
-            label: widget.language == 'Filipino' ? 'Laro' : 'Games',
+            activeIcon: Icon(Icons.videogame_asset),
+            label: 'Games',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
-            activeIcon: const Icon(Icons.person),
-            label: widget.language == 'Filipino' ? 'Profile' : 'Profile',
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
         currentIndex: 0,

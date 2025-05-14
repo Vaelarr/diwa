@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import '../main.dart'; // Import for ResponsiveUtil
-import '../data/filipino_words_data.dart'; // Import the centralized data
+import '../main.dart';
+import '../data/filipino_words_data.dart';
 import '../user_state.dart';
 import 'word_details_page.dart';
+import '../services/progress_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'dart:async';
 
 class LearnSection extends StatefulWidget {
   final String language;
-  
+
   const LearnSection({
     super.key,
     required this.language,
@@ -16,65 +20,90 @@ class LearnSection extends StatefulWidget {
   State<LearnSection> createState() => _LearnSectionState();
 }
 
-class _LearnSectionState extends State<LearnSection> {
-  List<Map<String, dynamic>> _lessons = [];
+class _LearnSectionState extends State<LearnSection> {  List<Map<String, dynamic>> _lessons = [];
   int _currentLevel = 1;
-  
+  bool _isLoadingProgress = false;
+  Timer? _dbListener;
+
   // Localized text getters
-  String get _learnTitle => 
-    widget.language == 'Filipino' ? 'MGA ARALIN' : 'LESSONS';
-    
-  String get _beginnerTitle => 
-    widget.language == 'Filipino' ? 'Nagsisimula' : 'Beginner';
-    
-  String get _intermediateTitle => 
-    widget.language == 'Filipino' ? 'Panggitnang Antas' : 'Intermediate';
-    
-  String get _advancedTitle => 
-    widget.language == 'Filipino' ? 'Advanced' : 'Advanced';
-    
-  String get _comingSoonText => 
-    widget.language == 'Filipino' ? 'Malapit nang Dumating' : 'Coming Soon';
-    
-  String get _lessonsCompletedText => 
-    widget.language == 'Filipino' ? 'Mga Natapós na Aralin' : 'Lessons Completed';
-    
-  String get _startLessonText => 
-    widget.language == 'Filipino' ? 'Simulan ang Aralin' : 'Start Lesson';
-    
-  String get _continueText => 
-    widget.language == 'Filipino' ? 'Magpatuloy' : 'Continue';
-    
-  String get _completedText => 
-    widget.language == 'Filipino' ? 'Natapos' : 'Completed';
-    
-  String get _lockedText => 
-    widget.language == 'Filipino' ? 'Naka-lock' : 'Locked';
-    
-  String get _unlockHintText => 
-    widget.language == 'Filipino' 
-        ? 'Kumpletuhin ang mga naunang aralin upang i-unlock ito' 
-        : 'Complete previous lessons to unlock';
+  String get _learnTitle =>
+      widget.language == 'Filipino' ? 'MGA ARALIN' : 'LESSONS';
+
+  String get _beginnerTitle =>
+      widget.language == 'Filipino' ? 'Nagsisimula' : 'Beginner';
+
+  String get _intermediateTitle =>
+      widget.language == 'Filipino' ? 'Panggitnang Antas' : 'Intermediate';
+
+  String get _advancedTitle =>
+      widget.language == 'Filipino' ? 'Advanced' : 'Advanced';
+
+  String get _comingSoonText =>
+      widget.language == 'Filipino' ? 'Malapit nang Dumating' : 'Coming Soon';
+
+  String get _lessonsCompletedText =>
+      widget.language == 'Filipino' ? 'Mga Natapós na Aralin' : 'Lessons Completed';
+
+  String get _startLessonText =>
+      widget.language == 'Filipino' ? 'Simulan ang Aralin' : 'Start Lesson';
+
+  String get _continueText =>
+      widget.language == 'Filipino' ? 'Magpatuloy' : 'Continue';
+
+  String get _completedText =>
+      widget.language == 'Filipino' ? 'Natapos' : 'Completed';
+
+  String get _lockedText =>
+      widget.language == 'Filipino' ? 'Naka-lock' : 'Locked';
+
+  String get _unlockHintText =>
+      widget.language == 'Filipino'
+          ? 'Kumpletuhin ang mga naunang aralin upang i-unlock ito'
+          : 'Complete previous lessons to unlock';
 
   @override
   void initState() {
     super.initState();
     _loadLessons();
+
+    // Load progress from Firebase if user is logged in
+    if (UserState.instance.isLoggedIn) {
+      _loadProgressFromFirebase();
+      _setupRealtimeProgressListener();
+    }
+
+    // Listen for login state changes
+    UserState.instance.loginState.listen((isLoggedIn) {
+      if (isLoggedIn && mounted) {
+        _loadProgressFromFirebase();
+        _setupRealtimeProgressListener();
+      } else if (!isLoggedIn && _dbListener != null) {
+        _dbListener?.cancel();
+        _dbListener = null;
+      }
+    });
   }
-  
+
+  @override
+  void dispose() {
+    // Clean up the database listener when the widget is removed
+    _dbListener?.cancel();
+    super.dispose();
+  }
+
   void _loadLessons() {
     // Simplified approach that directly uses categories from FilipinoWordsData
     final lessonsData = <Map<String, dynamic>>[];
-    
+
     // Get all categories from FilipinoWordsData
     final allCategories = FilipinoWordsData.getAllCategories();
-    final valueCategories = allCategories.where((cat) => 
-      ['character traits', 'values', 'social values', 'virtues'].contains(cat)).toList();
-    final emotionCategories = allCategories.where((cat) => 
-      ['emotions', 'feelings', 'psychological states'].contains(cat)).toList();
-    final conceptCategories = allCategories.where((cat) => 
-      ['abstract concepts', 'social terms', 'relational concepts'].contains(cat)).toList();
-    
+    final valueCategories = allCategories.where((cat) =>
+        ['character traits', 'values', 'social values', 'virtues'].contains(cat)).toList();
+    final emotionCategories = allCategories.where((cat) =>
+        ['emotions', 'feelings', 'psychological states'].contains(cat)).toList();
+    final conceptCategories = allCategories.where((cat) =>
+        ['abstract concepts', 'social terms', 'relational concepts'].contains(cat)).toList();
+
     // Helper function to add lesson only if it has words
     void addLessonIfHasWords(Map<String, dynamic> lesson) {
       final wordsList = lesson['words'] as List;
@@ -82,7 +111,7 @@ class _LearnSectionState extends State<LearnSection> {
         lessonsData.add(lesson);
       }
     }
-    
+
     // LEVEL 1: Beginner lessons with easy words
     final easyWords = FilipinoWordsData.getWordsByDifficulty('easy');
     if (easyWords.isNotEmpty) {
@@ -101,7 +130,7 @@ class _LearnSectionState extends State<LearnSection> {
         'words': easyWords.take(10).toList(),
       });
     }
-    
+
     // Add Values lesson if category has words
     if (valueCategories.isNotEmpty) {
       final valueWords = FilipinoWordsData.getWordsByCategory(valueCategories[0]);
@@ -122,7 +151,7 @@ class _LearnSectionState extends State<LearnSection> {
         });
       }
     }
-    
+
     // Add Emotions lesson if category has words
     if (emotionCategories.isNotEmpty) {
       final emotionWords = FilipinoWordsData.getWordsByCategory(emotionCategories[0]);
@@ -143,7 +172,7 @@ class _LearnSectionState extends State<LearnSection> {
         });
       }
     }
-    
+
     // LEVEL 2: Intermediate lessons - only add if we have matching words
     if (valueCategories.length > 1) {
       final socialValueWords = FilipinoWordsData.getWordsByCategory(valueCategories[1]);
@@ -164,12 +193,12 @@ class _LearnSectionState extends State<LearnSection> {
         });
       }
     }
-    
+
     // Add intermediate emotions lesson with medium difficulty words
     final mediumWords = FilipinoWordsData.getWordsByDifficulty('medium')
         .where((word) => FilipinoWordsData.words[word]?['category']?.contains('emotions') ?? false)
         .toList();
-    
+
     if (mediumWords.isNotEmpty) {
       addLessonIfHasWords({
         'id': 5,
@@ -186,7 +215,7 @@ class _LearnSectionState extends State<LearnSection> {
         'words': mediumWords.take(5).toList(),
       });
     }
-    
+
     // LEVEL 3: Advanced lessons - only if we have concepts
     if (conceptCategories.isNotEmpty) {
       final conceptWords = FilipinoWordsData.getWordsByCategory(conceptCategories[0]);
@@ -226,10 +255,89 @@ class _LearnSectionState extends State<LearnSection> {
         'words': hardWords.take(5).toList(),
       });
     }
-    
+
     setState(() {
       _lessons = lessonsData;
     });
+  }  // New method to load progress from SharedPreferences
+  Future<void> _loadProgressFromFirebase() async {
+    if (!UserState.instance.isLoggedIn || _lessons.isEmpty) return;
+
+    setState(() {
+      _isLoadingProgress = true;
+    });
+
+    try {
+      final allProgress = await ProgressService.instance.getAllLessonProgress();
+
+      if (allProgress.isNotEmpty && mounted) {
+        setState(() {
+          for (var lesson in _lessons) {
+            final lessonId = lesson['id'].toString();
+            if (allProgress.containsKey(lessonId)) {
+              final lessonProgress = allProgress[lessonId];
+              lesson['progress'] = lessonProgress['progress'] ?? 0.0;
+              lesson['completed'] = lessonProgress['completed'] ?? false;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading lesson progress: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProgress = false;
+        });
+      }
+    }
+  }
+    // Set up periodic refresh for lesson progress updates
+  void _setupRealtimeProgressListener() {
+    if (!UserState.instance.isLoggedIn || _lessons.isEmpty) return;
+    
+    // Cancel any existing listener
+    _dbListener?.cancel();
+    
+    // Set up a timer to refresh progress data periodically
+    _dbListener = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (!mounted) return;
+      _loadProgressFromLocalStorage();
+    });
+  }
+  
+  // Load progress from SharedPreferences
+  Future<void> _loadProgressFromLocalStorage() async {
+    if (!UserState.instance.isLoggedIn || _lessons.isEmpty) return;
+
+    setState(() {
+      _isLoadingProgress = true;
+    });
+
+    try {
+      final allProgress = await ProgressService.instance.getAllLessonProgress();
+
+      if (allProgress.isNotEmpty && mounted) {
+        setState(() {
+          for (var lesson in _lessons) {
+            final lessonId = lesson['id'].toString();
+            if (allProgress.containsKey(lessonId)) {
+              final lessonProgress = allProgress[lessonId];
+              lesson['progress'] = lessonProgress['progress'] ?? 0.0;
+              lesson['completed'] = lessonProgress['completed'] ?? false;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading lesson progress: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingProgress = false;
+        });
+      }
+    }
   }
 
   void _openLesson(Map<String, dynamic> lesson) {
@@ -252,7 +360,7 @@ class _LearnSectionState extends State<LearnSection> {
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 16),
-              
+
               // Word list with simple formatting
               if ((lesson['words'] as List).isNotEmpty) ...[
                 Text(
@@ -260,7 +368,7 @@ class _LearnSectionState extends State<LearnSection> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Simple word list
                 ...lesson['words'].map<Widget>((word) {
                   final wordData = FilipinoWordsData.words[word];
@@ -311,15 +419,10 @@ class _LearnSectionState extends State<LearnSection> {
             onPressed: () {
               // Only update progress if user is logged in
               if (UserState.instance.isLoggedIn) {
-                setState(() {
-                  final index = _lessons.indexWhere((l) => l['id'] == lesson['id']);
-                  if (index != -1 && _lessons[index]['progress'] == 0.0) {
-                    _lessons[index]['progress'] = 0.3;
-                  }
-                });
+                _updateLessonProgress(lesson, 0.3, false);
               }
               Navigator.pop(context);
-              
+
               // Navigate to first word
               if ((lesson['words'] as List).isNotEmpty) {
                 _navigateToWordDetails(lesson['words'][0]);
@@ -338,13 +441,7 @@ class _LearnSectionState extends State<LearnSection> {
                     : (widget.language == 'Filipino' ? 'Markahan bilang Tapos' : 'Mark as Complete'),
               ),
               onPressed: () {
-                setState(() {
-                  final index = _lessons.indexWhere((l) => l['id'] == lesson['id']);
-                  if (index != -1) {
-                    _lessons[index]['completed'] = true;
-                    _lessons[index]['progress'] = 1.0;
-                  }
-                });
+                _updateLessonProgress(lesson, 1.0, true);
                 Navigator.pop(context);
               },
             ),
@@ -359,9 +456,34 @@ class _LearnSectionState extends State<LearnSection> {
     );
   }
 
+  // Update this method to save progress to Firebase
+  void _updateLessonProgress(Map<String, dynamic> lesson, double progress, bool completed) async {
+    if (!UserState.instance.isLoggedIn) return;
+
+    try {
+      // Update local state
+      setState(() {
+        final index = _lessons.indexWhere((l) => l['id'] == lesson['id']);
+        if (index != -1) {
+          _lessons[index]['progress'] = progress;
+          _lessons[index]['completed'] = completed;
+        }
+      });
+
+      // Save to Firebase
+      await ProgressService.instance.saveLessonProgress(
+        lessonId: lesson['id'].toString(),
+        progress: progress,
+        completed: completed,
+      );
+    } catch (e) {
+      debugPrint('Error updating lesson progress: $e');
+    }
+  }
+
   void _navigateToWordDetails(String word) {
     Navigator.pop(context);
-    
+
     if (FilipinoWordsData.words.containsKey(word)) {
       Navigator.push(
         context,
@@ -385,7 +507,7 @@ class _LearnSectionState extends State<LearnSection> {
   @override
   Widget build(BuildContext context) {
     final isTablet = ResponsiveUtil.isTablet(context);
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F4E1),
       appBar: AppBar(
@@ -421,7 +543,7 @@ class _LearnSectionState extends State<LearnSection> {
               textAlign: TextAlign.center,
             ),
           ),
-          
+
           // Simple level tabs
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -433,7 +555,7 @@ class _LearnSectionState extends State<LearnSection> {
               ],
             ),
           ),
-          
+
           // Completion status if logged in
           if (UserState.instance.isLoggedIn)
             Padding(
@@ -447,7 +569,7 @@ class _LearnSectionState extends State<LearnSection> {
                 ),
               ),
             ),
-          
+
           // Lessons list
           Expanded(
             child: _buildSimpleLessonsList(),
@@ -488,7 +610,7 @@ class _LearnSectionState extends State<LearnSection> {
 
   Widget _buildSimpleTab(int level, String title) {
     final isSelected = _currentLevel == level;
-    
+
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -521,7 +643,7 @@ class _LearnSectionState extends State<LearnSection> {
 
   Widget _buildSimpleLessonsList() {
     final filteredLessons = _lessons.where((lesson) => lesson['level'] == _currentLevel).toList();
-    
+
     if (filteredLessons.isEmpty) {
       return Center(
         child: Text(
@@ -534,7 +656,7 @@ class _LearnSectionState extends State<LearnSection> {
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: filteredLessons.length,
@@ -550,11 +672,11 @@ class _LearnSectionState extends State<LearnSection> {
     final double progress = lesson['progress'] as double;
     final Color lessonColor = lesson['color'] as Color;
     final List<String> wordList = lesson['words'] as List<String>;
-    
+
     // Reset progress display for non-logged-in users
     final bool showProgress = UserState.instance.isLoggedIn && progress > 0;
     final bool showCompleted = UserState.instance.isLoggedIn && isCompleted;
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
@@ -582,7 +704,7 @@ class _LearnSectionState extends State<LearnSection> {
                     const Icon(Icons.check_circle, color: Colors.green, size: 16)
                 ],
               ),
-              
+
               // Description
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -594,7 +716,7 @@ class _LearnSectionState extends State<LearnSection> {
                   ),
                 ),
               ),
-              
+
               // Preview of words (show first 3)
               if (wordList.isNotEmpty)
                 Padding(
@@ -609,7 +731,7 @@ class _LearnSectionState extends State<LearnSection> {
                     )).toList(),
                   ),
                 ),
-              
+
               // Duration & progress indicator
               Row(
                 children: [
@@ -632,7 +754,24 @@ class _LearnSectionState extends State<LearnSection> {
                     ),
                 ],
               ),
-              
+
+              // Add onPressed handler to mark lessons as complete
+              if (UserState.instance.isLoggedIn && lesson['progress'] > 0)
+                TextButton.icon(
+                  icon: Icon(
+                    (lesson['completed'] as bool) ? Icons.check_circle : Icons.check_circle_outline,
+                    color: Colors.green,
+                  ),
+                  label: Text(
+                    (lesson['completed'] as bool)
+                        ? (widget.language == 'Filipino' ? 'Tapos na' : 'Completed')
+                        : (widget.language == 'Filipino' ? 'Markahan bilang Tapos' : 'Mark as Complete'),
+                  ),
+                  onPressed: () {
+                    _updateLessonProgress(lesson, 1.0, true);
+                  },
+                ),
+
               // Simple progress bar - only show if logged in
               if (showProgress)
                 Padding(

@@ -138,6 +138,19 @@ class AuthService {
     }
   }
 
+  // Check if a user with the given email already exists
+  Future<bool> checkIfUserExists(String email) async {
+    try {
+      // Get sign-in methods for the email
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      // If there are sign-in methods available, the user exists
+      return methods.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking if user exists: $e');
+      return false;
+    }
+  }
+
   // Get current user name
   Future<String> getCurrentUserName() async {
     try {
