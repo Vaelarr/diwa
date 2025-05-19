@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../user_state.dart';
 import '../main.dart'; // Import ResponsiveUtil
-import '../data/filipino_words_data.dart'; // Import the centralized data
+import '../data/filipino_words_structured.dart'; // Import the centralized data
+import 'word_details_page.dart'; // Import for WordDetailsPage
+import 'login.dart'; // Add this import for LoginPage
 
 class ProfileSection extends StatefulWidget {
   final Function(ThemeData) updateTheme;
@@ -23,22 +25,21 @@ class ProfileSection extends StatefulWidget {
 
 class _ProfileSectionState extends State<ProfileSection> {
   String _selectedTheme = 'Default';
-  bool _notificationsEnabled = true;
+  bool _notificationsEnabled = true; // Keeping this variable to avoid breaking existing code
   String _selectedLanguage = 'English';
   String _tempSelectedLanguage = 'English'; // Temporary variable for language selection
   double _fontSize = 16.0;
   
-  // Add achievement-related state variables
-  int _completedLessons = 0;
+  // Keeping achievement-related state variables but removing unused ones
   int _achievements = 0;
   int _totalPoints = 0;
-  int _wordsLearned = 0;
 
   // Add language change listener reference
   late VoidCallback _languageChangeListener;
 
   // Add a field to track language changes and force updates
   bool _forceRebuild = false;
+  
   @override
   void initState() {
     super.initState();
@@ -48,8 +49,10 @@ class _ProfileSectionState extends State<ProfileSection> {
     // Initialize font size from UserState
     _loadFontSizePreference();
     
-    // Load achievement data from UserState
-    _loadAchievementData();
+    // Load achievement data from UserState - with delay to ensure it loads after auth state is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAchievementData();
+    });
 
     // Set up listener for language changes from UserState
     _languageChangeListener = () {
@@ -68,29 +71,36 @@ class _ProfileSectionState extends State<ProfileSection> {
     // Initialize language from UserState on load
     _syncLanguageWithUserState();
   }
-    // Load achievement data from UserState
+  
+  // Load achievement data from UserState
   Future<void> _loadAchievementData() async {
     if (!UserState.instance.isLoggedIn) return;
     
     try {
-      final completedLessons = await UserState.instance.getCompletedLessonsCount();
-      final achievements = await UserState.instance.getAchievementsCount();
-      final totalPoints = await UserState.instance.getTotalPoints();
-      final wordsLearned = await UserState.instance.getWordsLearnedCount();
+      // Use the new consolidated method to refresh all metrics at once
+      final metrics = await UserState.instance.refreshAllProgressMetrics();
       
       if (mounted) {
         setState(() {
-          _completedLessons = completedLessons;
-          _achievements = achievements;
-          _totalPoints = totalPoints;
-          _wordsLearned = wordsLearned;
+          _achievements = metrics['achievements']!;
+          _totalPoints = metrics['totalPoints']!;
         });
+        
+        // Debug print to verify data
+        debugPrint('Achievement Data Loaded: Achievements=$_achievements, Points=$_totalPoints');
       }
     } catch (e) {
       debugPrint('Error loading achievement data: $e');
+      // Show error message if in debug mode
+      assert(() {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Debug: Error loading achievements: $e')),
+        );
+        return true;
+      }());
     }
   }
-
+  
   @override
   void dispose() {
     // Clean up by removing the listener when widget is disposed
@@ -173,11 +183,6 @@ class _ProfileSectionState extends State<ProfileSection> {
       widget.language == 'Filipino' ? 'Mga Setting ng App' : 'App Preferences';
   String get _themeText =>
       widget.language == 'Filipino' ? 'Tema ng App' : 'App Theme';
-  String get _notificationsText =>
-      widget.language == 'Filipino' ? 'Mga Notification' : 'Notifications';
-  String get _enableNotificationsText => widget.language == 'Filipino'
-      ? 'Paganahin ang mga push notification'
-      : 'Enable push notifications';
   String get _languageText =>
       widget.language == 'Filipino' ? 'Wika' : 'Language';
   String get _fontSizeText =>
@@ -190,31 +195,16 @@ class _ProfileSectionState extends State<ProfileSection> {
       ? 'Sigurado ka bang gusto mong mag-logout?'
       : 'Are you sure you want to logout?';
   String get _cancelText =>
-      widget.language == 'Filipino' ? 'Kanselahin' : 'Cancel';
-  String get _profileSettingsText =>
-      widget.language == 'Filipino' ? 'PROFILE' : 'PROFILE';
-  String get _statsText =>
-      widget.language == 'Filipino' ? 'Iyong Istatistika' : 'Your Statistics';
-  String get _wordsLearnedText =>
-      widget.language == 'Filipino' ? 'Mga Natutunan na Salita' : 'Words Learned';
-  String get _completedLessonsText =>
-      widget.language == 'Filipino' ? 'Nakumpletong Aralin' : 'Completed Lessons';
-  String get _achievementsText =>
-      widget.language == 'Filipino' ? 'Mga Tagumpay' : 'Achievements';
-  String get _totalPointsText =>
-      widget.language == 'Filipino' ? 'Kabuuang Puntos' : 'Total Points';  @override
-  Widget build(BuildContext context) {
+      widget.language == 'Filipino' ? 'Kanselahin' : 'Cancel';  String get _profileSettingsText =>
+      widget.language == 'Filipino' ? 'PROFILE' : 'PROFILE';@override  Widget build(BuildContext context) {
     // Reset force rebuild flag
     _forceRebuild = false;
 
-    final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = ResponsiveUtil.isTablet(context);
     final padding = ResponsiveUtil.getResponsivePadding(context: context);
     
-    // Load achievement data when the widget is built
-    if (UserState.instance.isLoggedIn) {
-      _loadAchievementData();
-    }
+    // Don't reload achievement data on every build - this can cause infinite loops
+    // Only load on specific lifecycle events (initState, didChangeDependencies)
 
     return Scaffold(
       appBar: AppBar(
@@ -520,18 +510,17 @@ class _ProfileSectionState extends State<ProfileSection> {
           child: CircularProgressIndicator(color: Colors.brown),
         ),
       );
-        // Perform logout
-      await UserState.instance.logout();
       
-      // Reset achievement data in UI
+      // Reset achievement data in UI before actual logout
       if (mounted) {
         setState(() {
-          _completedLessons = 0;
           _achievements = 0;
           _totalPoints = 0;
-          _wordsLearned = 0;
         });
       }
+      
+      // Perform logout
+      await UserState.instance.logout();
 
       // Wait briefly to simulate processing
       await Future.delayed(const Duration(milliseconds: 500));
@@ -545,19 +534,16 @@ class _ProfileSectionState extends State<ProfileSection> {
       if (!mounted) return;
       Navigator.pop(context); // Dismiss loading indicator
       
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Successfully logged out'),
-          backgroundColor: Colors.green,
+      // Navigate to login page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LoginPage(language: '',),
         ),
       );
     }
   }
-
   Widget _buildLoggedInView(bool isTablet, EdgeInsets padding) {
-    // Get sample statistics based on the word data
-    final easyWords = FilipinoWordsData.getWordsByDifficulty('easy').length;
 
     return ListView(
       padding: padding,
@@ -637,14 +623,7 @@ class _ProfileSectionState extends State<ProfileSection> {
                               ? 'I-edit ang Profile'
                               : 'Edit Profile'),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(widget.language == 'Filipino'
-                                    ? 'Magagamit sa hinaharap'
-                                    : 'Coming soon'),
-                                backgroundColor: Colors.brown,
-                              ),
-                            );
+                            _showEditProfileDialog();
                           },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.brown,
@@ -659,85 +638,10 @@ class _ProfileSectionState extends State<ProfileSection> {
                       ],
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Enhanced statistics section header
-                Container(
-                  margin: const EdgeInsets.only(left: 4, bottom: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.brown.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.brown.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.analytics_outlined,
-                          color: Colors.brown,
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _statsText,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.brown,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Enhanced stat cards with better spacing
-                GridView.count(
-                  crossAxisCount: isTablet ? 2 : 1,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: isTablet ? 3 : 2.5,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  children: [                    _buildStatCard(
-                      icon: Icons.book,
-                      title: _wordsLearnedText,
-                      value: _wordsLearned.toString(),
-                      color: Colors.green,
-                      total: easyWords,
-                    ),
-                    _buildStatCard(
-                      icon: Icons.school,
-                      title: _completedLessonsText,
-                      value: _completedLessons.toString(),
-                      color: Colors.blue,
-                      total: 10,
-                    ),
-                    _buildStatCard(
-                      icon: Icons.emoji_events,
-                      title: _achievementsText,
-                      value: _achievements.toString(),
-                      color: Colors.amber,
-                      total: 8,
-                    ),
-                    _buildStatCard(
-                      icon: Icons.star,
-                      title: _totalPointsText,
-                      value: _totalPoints.toString(),
-                      color: Colors.purple,
-                    ),
-                  ],
-                ),
+                ),                const SizedBox(height: 24),
+                
+                // Add saved words section
+                _buildSavedWordsSection(isTablet),
 
                 const SizedBox(height: 24),
 
@@ -829,33 +733,6 @@ class _ProfileSectionState extends State<ProfileSection> {
                         trailing: Icon(Icons.chevron_right,
                             color: Colors.brown.withOpacity(0.7)),
                         onTap: () => _showLanguageDialog(),
-                      ),
-                      Divider(
-                          height: 1,
-                          indent: 70,
-                          endIndent: 20,
-                          color: Colors.brown.withOpacity(0.1)),
-                      SwitchListTile(
-                        title: Text(_notificationsText,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(_enableNotificationsText),
-                        secondary: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.notifications_outlined,
-                              color: Colors.orange),
-                        ),
-                        value: _notificationsEnabled,
-                        activeColor: Colors.brown,
-                        onChanged: (value) {
-                          setState(() {
-                            _notificationsEnabled = value;
-                          });
-                        },
                       ),
                       Divider(
                           height: 1,
@@ -1022,85 +899,6 @@ class _ProfileSectionState extends State<ProfileSection> {
   }
 
   // Enhanced stat card with subtle animations
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-    int? total,
-  }) {
-    return Card(
-      elevation: 3,
-      shadowColor: color.withOpacity(0.3),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                    textBaseline: TextBaseline.alphabetic,
-                    children: [
-                      Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
-                      ),
-                      if (total != null) ...[
-                        Text(
-                          ' / ${total.toString()}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _showThemeDialog() {
     final isTablet = ResponsiveUtil.isTablet(context);
@@ -1259,7 +1057,7 @@ class _ProfileSectionState extends State<ProfileSection> {
           widget.updateTheme(newTheme);
           Navigator.pop(context);
         },
-      ),
+      )
     );
   }
 
@@ -1348,6 +1146,318 @@ class _ProfileSectionState extends State<ProfileSection> {
           });
         },
       ),
+    );
+  }
+
+  // String for saved words section
+  String get _savedWordsText =>
+      widget.language == 'Filipino' ? 'Mga Na-save na Salita' : 'Saved Words';
+        String get _noSavedWordsText =>
+      widget.language == 'Filipino' ? 'Wala ka pang na-save na salita' : 'You haven\'t saved any words yet';
+
+  // New method to fetch and display saved words
+  Widget _buildSavedWordsSection(bool isTablet) {
+    return FutureBuilder<List<String>>(
+      future: UserState.instance.getSavedWords(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: CircularProgressIndicator(color: Colors.brown),
+            ),
+          );
+        }
+        
+        final savedWords = snapshot.data ?? [];
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Container(
+              margin: const EdgeInsets.only(left: 4, bottom: 12, top: 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.brown.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.brown.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.bookmark,
+                      color: Colors.brown,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _savedWordsText,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.brown,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Display saved words or message if none
+            Card(
+              elevation: 4,
+              shadowColor: Colors.brown.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: savedWords.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.bookmark_border,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _noSavedWordsText,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : GridView.builder(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: isTablet ? 3 : 2,
+                          childAspectRatio: 2.5,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: savedWords.length,
+                        itemBuilder: (context, index) {
+                          final word = savedWords[index];
+                          final wordData = FilipinoWordsStructured.words[word];
+                          
+                          return Card(
+                            elevation: 2,
+                            color: Colors.brown.withOpacity(0.05),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: Colors.brown.withOpacity(0.1),
+                              ),
+                            ),
+                            child: InkWell(                              onTap: () {
+                                if (FilipinoWordsStructured.words.containsKey(word)) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => WordDetailsPage(
+                                        word: word,
+                                        language: widget.language,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      word,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.brown,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if (wordData != null)
+                                      Text(
+                                        wordData['translations']?['english'] ?? '',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Add this method to the _ProfileSectionState class
+  void _showEditProfileDialog() {
+    final TextEditingController nameController = TextEditingController(text: UserState.instance.userFullName);
+    final isTablet = ResponsiveUtil.isTablet(context);
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            widget.language == 'Filipino' ? 'I-edit ang Profile' : 'Edit Profile',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.brown),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          content: SizedBox(
+            width: isTablet ? 400 : 300,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.brown.withOpacity(0.8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.person, size: 50, color: Colors.white),
+                  ),
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: widget.language == 'Filipino' ? 'Pangalan' : 'Name',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.person_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Email field (disabled, just for display)
+                  TextField(
+                    enabled: false,
+                    controller: TextEditingController(text: UserState.instance.userEmail),
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      disabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.brown,
+              ),
+              child: Text(widget.language == 'Filipino' ? 'Kanselahin' : 'Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newName = nameController.text.trim();
+                if (newName.isNotEmpty) {
+                  // Show loading indicator
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(
+                      child: CircularProgressIndicator(color: Colors.brown),
+                    ),
+                  );
+                  
+                  // Update user name in UserState using the new method
+                  final success = await UserState.instance.updateUserProfile(name: newName);
+                  
+                  // Dismiss loading indicator
+                  if (mounted) {
+                    Navigator.pop(context);
+                    
+                    // Trigger UI refresh
+                    setState(() {});
+                    
+                    // Show success or error message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(success 
+                          ? (widget.language == 'Filipino'
+                              ? 'Na-update ang profile!'
+                              : 'Profile updated successfully!')
+                          : (widget.language == 'Filipino'
+                              ? 'Hindi ma-update ang profile. Pakisubukang muli.'
+                              : 'Failed to update profile. Please try again.')),
+                        backgroundColor: success ? Colors.green : Colors.red,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                } else {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(widget.language == 'Filipino'
+                          ? 'Ang pangalan ay hindi maaaring walang laman.'
+                          : 'Name cannot be empty.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(widget.language == 'Filipino' ? 'I-save' : 'Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

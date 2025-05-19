@@ -1,6 +1,6 @@
 {
-    "name": "diwa",
-    "short_name": "diwa",
+    "name": "temp_diwa",
+    "short_name": "temp_diwa",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

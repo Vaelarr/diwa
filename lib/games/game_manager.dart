@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../user_state.dart';
 import '../services/score_service.dart';
-import '../services/progress_service.dart'; // Add this import
 import '../main.dart';
 import 'definition_game.dart';
 import 'baybayin_game.dart';
@@ -25,6 +24,7 @@ class _GameManagerState extends State<GameManager> {
   bool _isLoadingProgress = false; // Add this field
   bool _isAuthenticated = false;
   String? _userName;
+  int _userPoints = 0; // Add user points
   ScoreService scoreService = ScoreService();
   Map<String, dynamic> _gameProgressData = {}; // Add this field
 
@@ -37,6 +37,15 @@ class _GameManagerState extends State<GameManager> {
     UserState.instance.loginState.listen((_) {
       if (mounted) {
         _checkAuthentication();
+      }
+    });
+    
+    // Listen to points changes
+    UserState.instance.pointsStream.listen((points) {
+      if (mounted) {
+        setState(() {
+          _userPoints = points;
+        });
       }
     });
   }
@@ -59,7 +68,10 @@ class _GameManagerState extends State<GameManager> {
           _userName = UserState.instance.userFullName;
         }
         
-        // Load game progress from Firebase
+        // Get user points
+        _userPoints = await UserState.instance.getUserPoints();
+        
+        // Load game progress from score service
         await _loadGameProgress();
         
         // If there's an initial game type specified, navigate directly to that game
@@ -79,7 +91,7 @@ class _GameManagerState extends State<GameManager> {
     }
   }
   
-  // New method to load game progress from Firebase
+  // Method to load game progress from ScoreService
   Future<void> _loadGameProgress() async {
     if (!UserState.instance.isLoggedIn) return;
     
@@ -88,7 +100,7 @@ class _GameManagerState extends State<GameManager> {
     });
     
     try {
-      final progress = await ProgressService.instance.getAllGameProgress();
+      final progress = await scoreService.getAllGameProgress();
       if (mounted) {
         setState(() {
           _gameProgressData = progress;
@@ -389,6 +401,28 @@ class _GameManagerState extends State<GameManager> {
         centerTitle: true,
         toolbarHeight: isTablet ? 90 : 70,
         actions: [
+          // Points display
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.stars, color: Colors.amber, size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '$_userPoints',
+                  style: const TextStyle(
+                    color: Colors.brown,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Profile button showing user is logged in
           Container(
             margin: const EdgeInsets.only(right: 16),
@@ -501,7 +535,14 @@ class _GameManagerState extends State<GameManager> {
                             description: game['description'] as String,
                             progress: game['progress'] as double,
                             highScore: game['highScore'] as int,
-                            onTap: () => _navigateToGame(context, game['route'] as Widget Function()),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => (game['route'] as Widget Function())(),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -522,6 +563,9 @@ class _GameManagerState extends State<GameManager> {
     required int highScore,
     required VoidCallback onTap,
   }) {
+    // Check if this card is for lessons
+    final bool isLesson = title == (widget.language == 'Filipino' ? 'Mga Aralin' : 'Lessons');
+
     return Card(
       elevation: 3,
       shadowColor: color.withOpacity(0.3),
@@ -585,8 +629,8 @@ class _GameManagerState extends State<GameManager> {
               ),
               const SizedBox(height: 12),
               
-              // High score display
-              if (highScore > 0)
+              // High score display - only for games, not lessons
+              if (!isLesson && highScore > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -612,40 +656,41 @@ class _GameManagerState extends State<GameManager> {
               
               const Spacer(),
               
-              // Progress section
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        widget.language == 'Filipino' ? 'Pag-unlad' : 'Progress',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.brown[700],
-                          fontWeight: FontWeight.w500,
+              // Progress section - only for games, not lessons
+              if (!isLesson) 
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          widget.language == 'Filipino' ? 'Pag-unlad' : 'Progress',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.brown[700],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${(progress * 100).toInt()}%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.brown[700],
-                          fontWeight: FontWeight.bold,
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.brown[700],
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: color.withOpacity(0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                    minHeight: 6,
-                  ),
-                ],
-              ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: color.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                      minHeight: 6,
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -702,6 +747,30 @@ class _GameManagerState extends State<GameManager> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Points display in profile
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.stars, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$_userPoints ${widget.language == 'Filipino' ? 'Puntos' : 'Points'}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 24),

@@ -1,0 +1,693 @@
+  'bayanihan': {
+    'pronunciation': 'ba·ya·ni·han',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagkakaisa ng komunidad; pagtutulungan para sa isang layunin.',
+    ],
+    'englishDefinitions': [
+      'Communal unity; working together for a common cause.',
+    ],
+    'examples': [
+      'Ang diwa ng bayanihan ay makikita sa pagtulong ng mga kapitbahay sa paglipat ng bahay ni Mang Jose.',
+    ],
+    'examplesTranslation': [
+      'The spirit of bayanihan is seen when neighbors help in moving Mang Jose\'s house.',
+    ],
+    'synonyms': ['pagkakaisa', 'pagtutulungan', 'kooperasyon', 'damayan'],
+    'translations': {'english': 'communal unity, community spirit, cooperation'},
+    'category': ['filipino values', 'social concepts', 'community'],
+    'difficulty': 'medium',
+  },
+  
+  'utang na loob': {
+    'pronunciation': 'u·tang na lo·ob',
+    'partOfSpeech': 'parirala', // phrase
+    'tagalogDefinitions': [
+      'Katungkulang moral na maibalik ang kabutihan.',
+    ],
+    'englishDefinitions': [
+      'Debt of gratitude; moral obligation to repay kindness.',
+    ],
+    'examples': [
+      'Malaki ang utang na loob ko sa guro ko dahil sa kanyang paggabay sa akin.',
+    ],
+    'examplesTranslation': [
+      'I have a great debt of gratitude to my teacher for guiding me.',
+    ],
+    'synonyms': ['pagkakautang', 'pagkakahutang', 'obligasyon'],
+    'translations': {'english': 'debt of gratitude, moral obligation, indebtedness'},
+    'category': ['filipino values', 'social concepts', 'moral obligations'],
+    'difficulty': 'hard',
+  },
+  
+  'pakikisama': {
+    'pronunciation': 'pa·ki·ki·sa·ma',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pakikibagay sa iba; pagpapanatili ng magandang relasyon.',
+    ],
+    'englishDefinitions': [
+      'Getting along with others; maintaining smooth interpersonal relationships.',
+    ],
+    'examples': [
+      'Kahit hindi siya sang-ayon, pumayag siya para sa pakikisama.',
+    ],
+    'examplesTranslation': [
+      'Even though he disagreed, he agreed for the sake of harmony.',
+    ],
+    'synonyms': ['pagkakasundo', 'pakikibagay', 'pakikihalubilo'],
+    'translations': {'english': 'camaraderie, getting along, social acceptance'},
+    'category': ['filipino values', 'social interaction', 'relationships'],
+    'difficulty': 'medium',
+  },
+  
+  'hiya': {
+    'pronunciation': 'hi·ya',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Kahihiyan; pagkamahiyain; kamalayan sa nararapat.',
+    ],
+    'englishDefinitions': [
+      'Shame or embarrassment; sense of propriety.',
+    ],
+    'examples': [
+      'Dahil sa hiya, hindi siya nakapagsalita sa harap ng maraming tao.',
+    ],
+    'examplesTranslation': [
+      'Because of shame, he couldn\'t speak in front of many people.',
+    ],
+    'synonyms': ['kahihiyan', 'pagkamahiyain', 'kababaang-loob'],
+    'translations': {'english': 'shame, embarrassment, shyness, propriety'},
+    'category': ['emotions', 'filipino values', 'social feelings'],
+    'difficulty': 'easy',
+  },
+  
+  'dangal': {
+    'pronunciation': 'da·ngal',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Karangalan; puri.',
+    ],
+    'englishDefinitions': [
+      'Honor; dignity.',
+    ],
+    'examples': [
+      'Pinaglaban niya ang kanyang dangal nang siya\'y pagbintangan.',
+    ],
+    'examplesTranslation': [
+      'He fought for his honor when he was accused.',
+    ],
+    'synonyms': ['karangalan', 'puri', 'kaluwalhatian', 'karangalan'],
+    'translations': {'english': 'honor, dignity, integrity'},
+    'category': ['filipino values', 'ethical concepts', 'personal attributes'],
+    'difficulty': 'medium',
+  },
+  
+  'pananagutan': {
+    'pronunciation': 'pa·na·na·gu·tan',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Responsibilidad; tungkulin.',
+    ],
+    'englishDefinitions': [
+      'Responsibility; accountability.',
+    ],
+    'examples': [
+      'Pananagutan ng bawat mamamayan ang pangangalaga sa kalikasan.',
+    ],
+    'examplesTranslation': [
+      'It is every citizen\'s responsibility to care for nature.',
+    ],
+    'synonyms': ['responsibilidad', 'tungkulin', 'obligasyon', 'katungkulan'],
+    'translations': {'english': 'responsibility, accountability, obligation'},
+    'category': ['filipino values', 'ethical concepts', 'civic duties'],
+    'difficulty': 'medium',
+  },
+  
+  'malasakit': {
+    'pronunciation': 'ma·la·sa·kit',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagmamalasakit; malalim na pakikiramay.',
+    ],
+    'englishDefinitions': [
+      'Compassionate concern; deep empathy.',
+    ],
+    'examples': [
+      'Ang tunay na malasakit ay makikita sa mga ginagawa, hindi sa mga sinasabi.',
+    ],
+    'examplesTranslation': [
+      'True compassion is seen in actions, not in words.',
+    ],
+    'synonyms': ['pagmamalasakit', 'pakikiramay', 'pagkalinga', 'pag-aaruga'],
+    'translations': {'english': 'compassion, concern, empathy, solicitude'},
+    'category': ['filipino values', 'emotions', 'caring'],
+    'difficulty': 'medium',
+  },
+  
+  'mapagkumbaba': {
+    'pronunciation': 'ma·pag·kum·ba·ba',
+    'partOfSpeech': 'pang-uri', // adjective
+    'tagalogDefinitions': [
+      'Kababaang-loob; pagpapakumbaba.',
+    ],
+    'englishDefinitions': [
+      'Humility; being humble.',
+    ],
+    'examples': [
+      'Kahit mayaman siya, mapagkumbaba pa rin siya sa pakikitungo sa iba.',
+    ],
+    'examplesTranslation': [
+      'Even though he\'s wealthy, he remains humble in dealing with others.',
+    ],
+    'synonyms': ['mababang-loob', 'mahinhin', 'hindi mapagmalaki'],
+    'translations': {'english': 'humble, modest, unassuming'},
+    'category': ['filipino values', 'personal attributes', 'character traits'],
+    'difficulty': 'medium',
+  },
+  
+  'pagtitiis': {
+    'pronunciation': 'pag·ti·ti·is',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagtitiyaga; pagdurusa nang maluwag sa kalooban.',
+    ],
+    'englishDefinitions': [
+      'Endurance; perseverance through hardship.',
+    ],
+    'examples': [
+      'Ang pagtitiis ni Aling Maria ay nagdulot ng magandang kinabukasan para sa kanyang mga anak.',
+    ],
+    'examplesTranslation': [
+      'Aling Maria\'s endurance brought a good future for her children.',
+    ],
+    'synonyms': ['pagtitiyaga', 'pagbabata', 'pasensya', 'pagtitiis'],
+    'translations': {'english': 'endurance, perseverance, forbearance, patience'},
+    'category': ['filipino values', 'personal attributes', 'resilience'],
+    'difficulty': 'medium',
+  },
+  
+  'kagandahang-loob': {
+    'pronunciation': 'ka·gan·da·hang-lo·ob',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Kabutihan; pagkabukas-palad.',
+    ],
+    'englishDefinitions': [
+      'Kindness; generosity of spirit.',
+    ],
+    'examples': [
+      'Ang kanyang kagandahang-loob ang nagbigay ng pag-asa sa marami.',
+    ],
+    'examplesTranslation': [
+      'Her kindness gave hope to many.',
+    ],
+    'synonyms': ['kabutihan', 'pagkabukas-palad', 'kabaitan', 'pagkamatulungin'],
+    'translations': {'english': 'kindness, generosity, benevolence'},
+    'category': ['filipino values', 'personal attributes', 'virtues'],
+    'difficulty': 'medium',
+  },
+  
+  'tibay ng loob': {
+    'pronunciation': 'ti·bay ng lo·ob',
+    'partOfSpeech': 'parirala', // phrase
+    'tagalogDefinitions': [
+      'Lakas ng kalooban; katatagan.',
+    ],
+    'englishDefinitions': [
+      'Fortitude; strength of character.',
+    ],
+    'examples': [
+      'Ang tibay ng loob niya ang nagpatatag sa kanya sa mga pagsubok.',
+    ],
+    'examplesTranslation': [
+      'His fortitude strengthened him through trials.',
+    ],
+    'synonyms': ['katatagan', 'tapang', 'lakas ng kalooban', 'determinasyon'],
+    'translations': {'english': 'fortitude, courage, strength of character, resilience'},
+    'category': ['filipino values', 'personal attributes', 'mental strength'],
+    'difficulty': 'medium',
+  },
+  
+  'karangalan': {
+    'pronunciation': 'ka·ra·nga·lan',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Dangal; papuri; kaluwalhatian.',
+    ],
+    'englishDefinitions': [
+      'Honor; glory; dignity.',
+    ],
+    'examples': [
+      'Dinala niya ang karangalan sa ating bansa nang manalo siya sa kompetisyon.',
+    ],
+    'examplesTranslation': [
+      'He brought honor to our country when he won the competition.',
+    ],
+    'synonyms': ['dangal', 'papuri', 'kaluwalhatian', 'pagpapahalaga'],
+    'translations': {'english': 'honor, glory, dignity, prestige'},
+    'category': ['filipino values', 'achievements', 'social recognition'],
+    'difficulty': 'medium',
+  },
+  
+  'katapatan': {
+    'pronunciation': 'ka·ta·pa·tan',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagiging tapat; katapatan sa pangako.',
+    ],
+    'englishDefinitions': [
+      'Loyalty; faithfulness.',
+    ],
+    'examples': [
+      'Ang katapatan niya sa kanyang prinsipyo ay hindi natinag.',
+    ],
+    'examplesTranslation': [
+      'His loyalty to his principles did not waver.',
+    ],
+    'synonyms': ['pagiging tapat', 'pagkamatapat', 'debosyon', 'pagkamasunurin'],
+    'translations': {'english': 'loyalty, faithfulness, fidelity, devotion'},
+    'category': ['filipino values', 'personal attributes', 'relationships'],
+    'difficulty': 'medium',
+  },
+  
+  'matiisin': {
+    'pronunciation': 'ma·ti·i·sin',
+    'partOfSpeech': 'pang-uri', // adjective
+    'tagalogDefinitions': [
+      'Mapagtiis; matiyaga.',
+    ],
+    'englishDefinitions': [
+      'Long-suffering; patient.',
+    ],
+    'examples': [
+      'Matiisin si Lola sa pag-aalaga ng kanyang mga apo.',
+    ],
+    'examplesTranslation': [
+      'Grandmother is patient in taking care of her grandchildren.',
+    ],
+    'synonyms': ['mapagtiis', 'matiyaga', 'mapagbata', 'pasensyoso'],
+    'translations': {'english': 'patient, long-suffering, forbearing, enduring'},
+    'category': ['filipino values', 'personal attributes', 'character traits'],
+    'difficulty': 'easy',
+  },
+  
+  'matiyaga': {
+    'pronunciation': 'ma·ti·ya·ga',
+    'partOfSpeech': 'pang-uri', // adjective
+    'tagalogDefinitions': [
+      'Masipag; hindi sumusuko.',
+    ],
+    'englishDefinitions': [
+      'Persevering; persistent.',
+    ],
+    'examples': [
+      'Matiyaga siyang nagtanim ng gulay sa kanyang bakuran.',
+    ],
+    'examplesTranslation': [
+      'She persevered in planting vegetables in her yard.',
+    ],
+    'synonyms': ['masipag', 'pursigido', 'determinado', 'masinop'],
+    'translations': {'english': 'persevering, persistent, diligent, industrious'},
+    'category': ['filipino values', 'personal attributes', 'work ethics'],
+    'difficulty': 'easy',
+  },
+  
+  'mapagbigay': {
+    'pronunciation': 'ma·pag·bi·gay',
+    'partOfSpeech': 'pang-uri', // adjective
+    'tagalogDefinitions': [
+      'Bukas-palad; hindi maramot.',
+    ],
+    'englishDefinitions': [
+      'Generous; giving.',
+    ],
+    'examples': [
+      'Mapagbigay siya kahit may kakapusan din siya sa buhay.',
+    ],
+    'examplesTranslation': [
+      'He is generous even though he also has scarcity in life.',
+    ],
+    'synonyms': ['bukas-palad', 'matulungin', 'hindi madamot', 'maalwan'],
+    'translations': {'english': 'generous, giving, charitable, benevolent'},
+    'category': ['filipino values', 'personal attributes', 'character traits'],
+    'difficulty': 'easy',
+  },
+  
+  'mapagmahal': {
+    'pronunciation': 'ma·pag·ma·hal',
+    'partOfSpeech': 'pang-uri', // adjective
+    'tagalogDefinitions': [
+      'Puno ng pagmamahal; malambing.',
+    ],
+    'englishDefinitions': [
+      'Loving; affectionate.',
+    ],
+    'examples': [
+      'Mapagmahal na ina si Maria sa kanyang mga anak.',
+    ],
+    'examplesTranslation': [
+      'Maria is a loving mother to her children.',
+    ],
+    'synonyms': ['malambing', 'mapagkalinga', 'maalaga', 'mapagmalasakit'],
+    'translations': {'english': 'loving, affectionate, caring, nurturing'},
+    'category': ['emotions', 'relationships', 'personal attributes'],
+    'difficulty': 'easy',
+  },
+  
+  'disiplina': {
+    'pronunciation': 'di·si·pli·na',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagpipigil sa sarili; pagsasanay.',
+    ],
+    'englishDefinitions': [
+      'Discipline; self-control.',
+    ],
+    'examples': [
+      'Ang disiplina ang susi para sa tagumpay.',
+    ],
+    'examplesTranslation': [
+      'Discipline is the key to success.',
+    ],
+    'synonyms': ['pagpipigil-sarili', 'pagsasanay', 'pagkontrol', 'pagdidisiplina'],
+    'translations': {'english': 'discipline, self-control, training, restraint'},
+    'category': ['filipino values', 'personal development', 'character traits'],
+    'difficulty': 'easy',
+  },
+  
+  'paggalang': {
+    'pronunciation': 'pag·ga·lang',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Respeto; pagkilala sa kahalagahan ng iba.',
+    ],
+    'englishDefinitions': [
+      'Respect; reverence.',
+    ],
+    'examples': [
+      'Ipinakita niya ang paggalang sa mga nakatatanda.',
+    ],
+    'examplesTranslation': [
+      'He showed respect to elders.',
+    ],
+    'synonyms': ['respeto', 'pagpipitagan', 'paggalang', 'pag-uurong'],
+    'translations': {'english': 'respect, reverence, deference, honor'},
+    'category': ['filipino values', 'social interaction', 'etiquette'],
+    'difficulty': 'easy',
+  },
+  
+  'sigasig': {
+    'pronunciation': 'si·ga·sig',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Kasigasigan; kasabikan.',
+    ],
+    'englishDefinitions': [
+      'Enthusiasm; zeal.',
+    ],
+    'examples': [
+      'Ang sigasig niya sa trabaho ay nakakahawa.',
+    ],
+    'examplesTranslation': [
+      'His enthusiasm at work is contagious.',
+    ],
+    'synonyms': ['kasigasigan', 'kasabikan', 'sigla', 'kasipagan'],
+    'translations': {'english': 'enthusiasm, zeal, eagerness, fervor'},
+    'category': ['emotions', 'work ethics', 'personal attributes'],
+    'difficulty': 'medium',
+  },
+  
+  'kasipagan': {
+    'pronunciation': 'ka·si·pa·gan',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagiging masipag; pagsusumikap.',
+    ],
+    'englishDefinitions': [
+      'Industriousness; diligence.',
+    ],
+    'examples': [
+      'Ang kanyang kasipagan ang nagdala sa kanya sa tagumpay.',
+    ],
+    'examplesTranslation': [
+      'His industriousness brought him to success.',
+    ],
+    'synonyms': ['pagiging masipag', 'pagsusumikap', 'katiyagaan', 'kasisipagan'],
+    'translations': {'english': 'industriousness, diligence, hard work, assiduity'},
+    'category': ['filipino values', 'work ethics', 'personal attributes'],
+    'difficulty': 'easy',
+  },
+  
+  'katatagan': {
+    'pronunciation': 'ka·ta·ta·gan',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Tibay; hindi pabagu-bago.',
+    ],
+    'englishDefinitions': [
+      'Stability; steadfastness.',
+    ],
+    'examples': [
+      'Ang katatagan ng pamilya ay nakakatulong sa mga anak.',
+    ],
+    'examplesTranslation': [
+      'The stability of the family helps the children.',
+    ],
+    'synonyms': ['tibay', 'tatag', 'lakas', 'kahandaan'],
+    'translations': {'english': 'stability, steadfastness, firmness, resilience'},
+    'category': ['filipino values', 'personal attributes', 'resilience'],
+    'difficulty': 'medium',
+  },
+  
+  'pagkamatapat': {
+    'pronunciation': 'pag·ka·ma·ta·pat',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Katapatan; integridad.',
+    ],
+    'englishDefinitions': [
+      'Honesty; integrity.',
+    ],
+    'examples': [
+      'Ang pagkamatapat niya ay pinahahalagahan ng lahat.',
+    ],
+    'examplesTranslation': [
+      'His honesty is valued by everyone.',
+    ],
+    'synonyms': ['katapatan', 'integridad', 'kadalisayan', 'karangalan'],
+    'translations': {'english': 'honesty, integrity, truthfulness, uprightness'},
+    'category': ['filipino values', 'personal attributes', 'ethical concepts'],
+    'difficulty': 'medium',
+  },
+  
+  'pagkalinga': {
+    'pronunciation': 'pag·ka·li·nga',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pag-aaruga; pangangalaga.',
+    ],
+    'englishDefinitions': [
+      'Nurturing care; looking after.',
+    ],
+    'examples': [
+      'Ramdam ko ang pagkalinga ng aking ina sa tuwing ako\'y may sakit.',
+    ],
+    'examplesTranslation': [
+      'I feel my mother\'s nurturing care whenever I\'m sick.',
+    ],
+    'synonyms': ['pag-aaruga', 'pangangalaga', 'pagmamalasakit', 'pag-aalaga'],
+    'translations': {'english': 'nurturing care, looking after, tending, caring for'},
+    'category': ['filipino values', 'caring', 'relationships'],
+    'difficulty': 'medium',
+  },
+  
+  'pananagutan': {
+    'pronunciation': 'pa·na·na·gu·tan',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Responsibilidad; katungkulan.',
+    ],
+    'englishDefinitions': [
+      'Accountability; responsibility.',
+    ],
+    'examples': [
+      'May pananagutan tayong lahat sa ating mga desisyon.',
+    ],
+    'examplesTranslation': [
+      'We all have accountability for our decisions.',
+    ],
+    'synonyms': ['responsibilidad', 'katungkulan', 'obligasyon', 'tungkulin'],
+    'translations': {'english': 'accountability, responsibility, obligation, liability'},
+    'category': ['filipino values', 'ethical concepts', 'civic duties'],
+    'difficulty': 'medium',
+  },
+  
+  'tapang': {
+    'pronunciation': 'ta·pang',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Katapangan; lakas ng loob.',
+    ],
+    'englishDefinitions': [
+      'Courage; bravery.',
+    ],
+    'examples': [
+      'Ipinakita niya ang kanyang tapang nang harapin niya ang mga batikos.',
+    ],
+    'examplesTranslation': [
+      'He showed his courage when he faced criticisms.',
+    ],
+    'synonyms': ['katapangan', 'lakas ng loob', 'kabayanihan', 'kagitingan'],
+    'translations': {'english': 'courage, bravery, valor, boldness'},
+    'category': ['filipino values', 'personal attributes', 'character traits'],
+    'difficulty': 'easy',
+  },
+  
+  'talino': {
+    'pronunciation': 'ta·li·no',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Katalinuhan; karunungan.',
+    ],
+    'englishDefinitions': [
+      'Intelligence; wisdom.',
+    ],
+    'examples': [
+      'Ang talino niya ay nakita sa paraang siya ay nagsalita.',
+    ],
+    'examplesTranslation': [
+      'His intelligence was seen in the way he spoke.',
+    ],
+    'synonyms': ['katalinuhan', 'karunungan', 'kaisipan', 'dunong'],
+    'translations': {'english': 'intelligence, wisdom, intellect, brilliance'},
+    'category': ['personal attributes', 'cognitive abilities', 'mental traits'],
+    'difficulty': 'easy',
+  },
+  
+  'kabutihang-loob': {
+    'pronunciation': 'ka·bu·ti·hang-lo·ob',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Mabuting kalooban; kabaitan.',
+    ],
+    'englishDefinitions': [
+      'Goodwill; benevolence.',
+    ],
+    'examples': [
+      'Ang kabutihang-loob niya ay naramdaman ng komunidad.',
+    ],
+    'examplesTranslation': [
+      'His goodwill was felt by the community.',
+    ],
+    'synonyms': ['mabuting kalooban', 'kabaitan', 'pagmamagandang-loob', 'kagandahang-loob'],
+    'translations': {'english': 'goodwill, benevolence, kindness, good-heartedness'},
+    'category': ['filipino values', 'personal attributes', 'virtues'],
+    'difficulty': 'medium',
+  },
+  
+  'pagkamalikhain': {
+    'pronunciation': 'pag·ka·ma·lik·ha·in',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Pagkamabungang-isip; pagka-malikhain.',
+    ],
+    'englishDefinitions': [
+      'Creativity; inventiveness.',
+    ],
+    'examples': [
+      'Ang pagkamalikhain niya ay makikita sa kanyang mga obra.',
+    ],
+    'examplesTranslation': [
+      'His creativity can be seen in his works.',
+    ],
+    'synonyms': ['pagkamabungang-isip', 'pagkamalikhain', 'inobasyon', 'pagkamaimbentor'],
+    'translations': {'english': 'creativity, inventiveness, imagination, ingenuity'},
+    'category': ['personal attributes', 'cognitive abilities', 'artistic traits'],
+    'difficulty': 'medium',
+  },
+  
+  'pagpupunyagi': {
+    'pronunciation': 'pag·pu·pu·nya·gi',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Determinasyon; kasigasigan.',
+    ],
+    'englishDefinitions': [
+      'Determination; striving.',
+    ],
+    'examples': [
+      'Ang pagpupunyagi niya ang nagdala sa kanya sa tagumpay.',
+    ],
+    'examplesTranslation': [
+      'His determination brought him to success.',
+    ],
+    'synonyms': ['determinasyon', 'kasigasigan', 'pagsisikap', 'pagtitiyaga'],
+    'translations': {'english': 'determination, striving, perseverance, effort'},
+    'category': ['filipino values', 'personal attributes', 'mental strength'],
+    'difficulty': 'medium',
+  },
+  
+  'dalamhati': {
+    'pronunciation': 'da·lam·ha·ti',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Matinding kalungkutan; matinding pighati.',
+    ],
+    'englishDefinitions': [
+      'Grief; deep sorrow.',
+    ],
+    'examples': [
+      'Nabalot siya ng dalamhati nang mamatay ang kanyang ama.',
+    ],
+    'examplesTranslation': [
+      'She was enveloped in grief when her father died.',
+    ],
+    'synonyms': ['kalungkutan', 'pighati', 'lumbay', 'hinagpis'],
+    'translations': {'english': 'grief, deep sorrow, anguish, affliction'},
+    'category': ['emotions', 'negative feelings', 'trauma responses'],
+    'difficulty': 'medium',
+  },
+  
+  'lungkot': {
+    'pronunciation': 'lung·kot',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Kalungkutan; kapanglawan.',
+    ],
+    'englishDefinitions': [
+      'Sadness; melancholy.',
+    ],
+    'examples': [
+      'Naramdaman ko ang lungkot sa kanyang mga mata.',
+    ],
+    'examplesTranslation': [
+      'I felt the sadness in his eyes.',
+    ],
+    'synonyms': ['kalungkutan', 'kapanglawan', 'pighati', 'dalamhati'],
+    'translations': {'english': 'sadness, melancholy, sorrow, unhappiness'},
+    'category': ['emotions', 'negative feelings', 'mood states'],
+    'difficulty': 'easy',
+  },
+  
+  'ligaya': {
+    'pronunciation': 'li·ga·ya',
+    'partOfSpeech': 'pangngalan', // noun
+    'tagalogDefinitions': [
+      'Kaligayahan; tuwa.',
+    ],
+    'englishDefinitions': [
+      'Joy; happiness.',
+    ],
+    'examples': [
+      'Ang ligaya ay makikita sa kanyang ngiti.',
+    ],
+    'examplesTranslation': [
+      'Joy can be seen in his smile.',
+    ],
+    'synonyms': ['kaligayahan', 'tuwa', 'saya', 'kasiyahan'],
+    'translations': {'english': 'joy, happiness, delight, bliss'},
+    'category': ['emotions', 'positive feelings', 'mood states'],
+    'difficulty': 'easy',
+  },
+  

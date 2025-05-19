@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart'; // Import for ResponsiveUtil
-import '../data/filipino_words_data.dart'; // Import the centralized data
+import '../data/filipino_words_structured.dart'; // Import the centralized data
 import 'word_details_page.dart'; // Import the new word details page
 import '../user_state.dart'; // Import for checking login status
 
@@ -23,7 +23,7 @@ class _DictionaryPageState extends State<DictionaryPage> with SingleTickerProvid
   late AnimationController _animController;
 
   // Use the centralized data source
-  final Map<String, Map<String, dynamic>> _dictionary = FilipinoWordsData.words;
+  final Map<String, Map<String, dynamic>> _dictionary = FilipinoWordsStructured.words;
 
   // Localized text getters
   String get _dictionaryTitle =>

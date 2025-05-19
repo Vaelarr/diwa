@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../user_state.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProgressService {
   // Singleton pattern
@@ -14,7 +15,7 @@ class ProgressService {
   
   // Private constructor
   ProgressService._internal();
-    // Save lesson progress to SharedPreferences
+    // Save lesson progress to SharedPreferences and Firestore
   Future<bool> saveLessonProgress({
     required String lessonId,
     required double progress,
@@ -27,6 +28,7 @@ class ProgressService {
         return false;
       }
       
+      // Save to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final String lessonsJson = prefs.getString(_lessonsKey) ?? '{}';
       final Map<String, dynamic> allLessons = json.decode(lessonsJson);
@@ -36,15 +38,32 @@ class ProgressService {
         allLessons[userId] = {};
       }
       
-      // Save lesson data
-      allLessons[userId][lessonId] = {
+      // Prepare lesson data
+      final Map<String, dynamic> lessonData = {
         'progress': progress,
         'completed': completed,
         'lastUpdated': DateTime.now().toIso8601String(),
       };
       
-      // Save to SharedPreferences
+      // Save lesson data locally
+      allLessons[userId][lessonId] = lessonData;
       await prefs.setString(_lessonsKey, json.encode(allLessons));
+        // Save to Firestore if user is logged in
+      try {
+        await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('progress')
+          .doc('lessons')
+          .set({
+            lessonId: lessonData
+          }, SetOptions(merge: true));
+        
+        debugPrint('Progress saved to Firestore for lesson: $lessonId');
+      } catch (firestoreError) {
+        debugPrint('Error saving progress to Firestore: $firestoreError');
+        // Continue even if Firestore fails - we've saved locally
+      }
       
       return true;
     } catch (e) {
@@ -52,23 +71,43 @@ class ProgressService {
       return false;
     }
   }
-    // Get lesson progress from SharedPreferences
-  Future<Map<String, dynamic>> getLessonProgress(String lessonId) async {
+  // Get lesson progress from SharedPreferences and Firestore
+  Future<Map<String, dynamic>> getLessonProgress(String userId) async {
     try {
-      final userId = UserState.instance.uid;
       if (userId.isEmpty) {
         return {};
       }
       
+      // First try to get from Firestore if user is logged in
+      Map<String, dynamic> firebaseData = {};
+      try {
+        final docSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('progress')
+          .doc('lessons')
+          .get();
+          
+        if (docSnapshot.exists) {
+          firebaseData = docSnapshot.data() ?? {};
+        }
+      } catch (firebaseError) {
+        debugPrint('Error fetching progress from Firestore: $firebaseError');
+        // Continue with local data if Firestore fails
+      }
+      
+      // Also get from SharedPreferences as fallback
       final prefs = await SharedPreferences.getInstance();
       final String lessonsJson = prefs.getString(_lessonsKey) ?? '{}';
       final Map<String, dynamic> allLessons = json.decode(lessonsJson);
       
-      if (allLessons.containsKey(userId) && allLessons[userId].containsKey(lessonId)) {
-        return Map<String, dynamic>.from(allLessons[userId][lessonId]);
+      Map<String, dynamic> localData = {};
+      if (allLessons.containsKey(userId)) {
+        localData = allLessons[userId];
       }
       
-      return {};
+      // Merge Firestore and local data, preferring Firestore data
+      return {...localData, ...firebaseData};
     } catch (e) {
       debugPrint('Error getting lesson progress: $e');
       return {};
@@ -253,6 +292,70 @@ class ProgressService {
     } catch (e) {
       debugPrint('Error calculating overall progress: $e');
       return 0.0;
+    }
+  }
+    // Update grammar lesson progress specifically
+  Future<bool> updateGrammarLessonProgress({
+    required String lessonId,
+    required double progress,
+  }) async {
+    try {
+      final userId = UserState.instance.uid;
+      if (userId.isEmpty) {
+        debugPrint('Cannot update grammar progress: User not logged in');
+        return false;
+      }
+      
+      // Calculate if the lesson is completed
+      final bool completed = progress >= 1.0;
+      
+      // Create the lesson key
+      final String grammarLessonKey = 'grammar_$lessonId';
+      
+      // Save progress using the existing method
+      final result = await saveLessonProgress(
+        lessonId: grammarLessonKey,
+        progress: progress,
+        completed: completed,
+      );
+      
+      // Also update the overall grammar progress
+      // First get all grammar lesson progress
+      final allProgress = await getAllLessonProgress();
+      
+      // Calculate average grammar progress
+      double totalGrammarProgress = 0.0;
+      int grammarLessonCount = 0;
+      
+      allProgress.forEach((key, value) {
+        if (key.startsWith('grammar_') && value is Map && value.containsKey('progress')) {
+          totalGrammarProgress += (value['progress'] as num).toDouble();
+          grammarLessonCount++;
+        }
+      });
+      
+      // Add the current lesson if it's not already in the data
+      if (!allProgress.containsKey(grammarLessonKey)) {
+        totalGrammarProgress += progress;
+        grammarLessonCount++;
+      }
+      
+      // Calculate average
+      final double averageGrammarProgress = grammarLessonCount > 0 
+        ? totalGrammarProgress / grammarLessonCount 
+        : 0.0;
+      
+      // Save the overall grammar progress
+      await saveLessonProgress(
+        lessonId: 'grammar',
+        progress: averageGrammarProgress,
+        completed: averageGrammarProgress >= 1.0,
+      );
+      
+      return result;
+    } catch (e) {
+      debugPrint('Error updating grammar lesson progress: $e');
+      return false;
     }
   }
 }

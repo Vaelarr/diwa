@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../data/filipino_words_data.dart';
+import '../data/filipino_words_structured.dart';
 import '../user_state.dart';
 import 'word_details_page.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // Add this import
+import 'learn_section.dart';
 
 class HomeSection extends StatefulWidget {
   final String language;
@@ -21,8 +21,6 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
   late PageController _pageController;
   List<String> _featuredWords = [];
   late AnimationController _animController;
-  double _overallProgress = 0.0;
-  bool _isLoadingProgress = true; // Changed to true initially
 
   @override
   void initState() {
@@ -37,50 +35,6 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-
-    // Load progress from local storage
-    _loadProgressFromLocalStorage();
-  }
-
-  // Add this method to load progress from local storage
-  Future<void> _loadProgressFromLocalStorage() async {
-    try {
-      setState(() => _isLoadingProgress = true);
-      final prefs = await SharedPreferences.getInstance();
-      final progress = prefs.getDouble('user_progress') ?? 0.0;
-
-      setState(() {
-        _overallProgress = progress;
-        _isLoadingProgress = false;
-      });
-
-      print('Progress loaded from local storage: $_overallProgress');
-    } catch (e) {
-      print('Error loading progress from local storage: $e');
-      setState(() {
-        _overallProgress = 0.0;
-        _isLoadingProgress = false;
-      });
-    }
-  }
-
-  // Add this method to save progress to local storage
-  Future<void> _saveProgressToLocalStorage(double progress) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setDouble('user_progress', progress);
-      print('Progress saved to local storage: $progress');
-    } catch (e) {
-      print('Error saving progress to local storage: $e');
-    }
-  }
-
-  // This method can be called when progress changes
-  void updateProgress(double newProgress) {
-    setState(() {
-      _overallProgress = newProgress;
-    });
-    _saveProgressToLocalStorage(newProgress);
   }
 
   @override
@@ -92,7 +46,7 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
 
   void _loadFeaturedWords() {
     try {
-      final allWords = FilipinoWordsData.words.keys.toList();
+      final allWords = FilipinoWordsStructured.words.keys.toList();
       print('Total words available: ${allWords.length}');
 
       if (allWords.isEmpty) {
@@ -105,7 +59,7 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
       randomizedWords.shuffle();
 
       final completeWords = randomizedWords.where((word) {
-        final wordData = FilipinoWordsData.words[word];
+        final wordData = FilipinoWordsStructured.words[word];
         return wordData != null &&
                wordData.containsKey('translations') &&
                wordData['translations'] is Map &&
@@ -157,14 +111,6 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
   String get _learnSectionText => widget.language == 'English'
       ? 'Lessons'
       : 'Mga Aralin';
-
-  String get _progressText => widget.language == 'English'
-      ? 'Your Progress'
-      : 'Ang Iyong Progreso';
-
-  String get _continueText => widget.language == 'English'
-      ? 'Continue'
-      : 'Magpatuloy';
 
   @override
   Widget build(BuildContext context) {
@@ -251,10 +197,6 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
               const SizedBox(height: 16),
 
               _buildMainSectionsGrid(isTablet),
-
-              const SizedBox(height: 24),
-
-              _buildRecentProgressSection(isTablet),
             ],
           ),
         ),
@@ -497,7 +439,7 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
   }
 
   Widget _buildFeaturedWordCard(String word, bool isTablet) {
-    final wordData = FilipinoWordsData.words[word];
+    final wordData = FilipinoWordsStructured.words[word];
     if (wordData == null) {
       return Card(
         elevation: 4,
@@ -616,70 +558,14 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
             ),
           ),
         );
-      }
+      },
     );
   }
 
   Widget _buildMainSectionsGrid(bool isTablet) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: _buildMainSectionCard(
-        title: _learnSectionText,
-        icon: Icons.school,
-        color: Colors.green,
-        onTap: () {
-          Navigator.pushReplacementNamed(context, '/learn');
-        },
-      ),
-    );
-  }
-
-  Widget _buildMainSectionCard({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
     return Card(
       elevation: 4,
-      shadowColor: color.withOpacity(0.4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 48,
-                color: color,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentProgressSection(bool isTablet) {
-    return Card(
-      elevation: 4,
-      shadowColor: Colors.brown.withOpacity(0.3),
+      shadowColor: Colors.green.withOpacity(0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -693,19 +579,19 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.1),
+                    color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
-                    Icons.timeline,
-                    color: Colors.purple,
+                    Icons.school,
+                    color: Colors.green,
                     size: 22,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Flexible(
                   child: Text(
-                    _progressText,
+                    _learnSectionText,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -717,25 +603,38 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
               ],
             ),
             const SizedBox(height: 16),
-            if (!UserState.instance.isLoggedIn) ...[
-              Text(
-                widget.language == 'English'
-                    ? 'An account is needed to track your progress'
-                    : 'Kailangan ng isang account upang subaybayan ang iyong progreso',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
+            Text(
+              widget.language == 'English' 
+                  ? 'Start learning Filipino through interactive lessons' 
+                  : 'Simulan ang pag-aaral ng Filipino sa pamamagitan ng mga interactive na aralin',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/profile');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => LearnSection(
+                        language: widget.language,
+                      ),
+                    ),
+                  );
                 },
+                icon: const Icon(Icons.school),
+                label: Text(
+                  widget.language == 'English' ? 'Go to Lessons' : 'Pumunta sa mga Aralin',
+                  overflow: TextOverflow.ellipsis,
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.brown,
+                  backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
@@ -745,82 +644,8 @@ class _HomeSectionState extends State<HomeSection> with SingleTickerProviderStat
                     vertical: 12,
                   ),
                 ),
-                child: Text(
-                  widget.language == 'English' ? 'Go to Profile' : 'Pumunta sa Profile',
-                  overflow: TextOverflow.ellipsis,
-                ),
               ),
-            ] else if (_isLoadingProgress) ...[
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: CircularProgressIndicator(
-                    color: Colors.purple,
-                  ),
-                ),
-              ),
-            ] else ...[
-              LinearProgressIndicator(
-                value: _overallProgress,
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.purple),
-                minHeight: 8,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${(_overallProgress * 100).toInt()}% ${widget.language == 'English' ? 'Complete' : 'Kumpleto'}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Flexible(
-                    child: Text(
-                      widget.language == 'English'
-                          ? 'Demo progress (tracking disabled)'
-                          : 'Demo ng progreso (nakapatay ang tracking)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                        fontWeight: FontWeight.w500,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, '/learn');
-                  },
-                  icon: const Icon(Icons.play_arrow),
-                  label: Text(
-                    _continueText,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.purple,
-                    side: const BorderSide(color: Colors.purple),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ],
         ),
       ),

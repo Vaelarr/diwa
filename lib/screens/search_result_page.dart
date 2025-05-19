@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dictionary_page.dart';
-import '../data/filipino_words_data.dart';
+import '../data/filipino_words_structured.dart';
 import 'word_details_page.dart';
 
 class SearchResultPage extends StatelessWidget {
@@ -15,7 +15,7 @@ class SearchResultPage extends StatelessWidget {
   
   @override
   Widget build(BuildContext context) {
-    final wordData = FilipinoWordsData.words[word];
+    final wordData = FilipinoWordsStructured.words[word];
     
     if (wordData == null) {
       return Scaffold(
@@ -241,11 +241,11 @@ class SearchResultPage extends StatelessWidget {
   
   Widget _buildRelatedWords(String word, String language, BuildContext context) {
     // Find words in the same category
-    final wordData = FilipinoWordsData.words[word];
+    final wordData = FilipinoWordsStructured.words[word];
     if (wordData == null) return const SizedBox.shrink();
     
     final categories = wordData['category'] as List;
-    final allWords = FilipinoWordsData.words;
+    final allWords = FilipinoWordsStructured.words;
     
     // Find related words (words in the same category, excluding the current word)
     final relatedWords = allWords.keys

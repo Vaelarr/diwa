@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
 import '../main.dart'; // Import for ResponsiveUtil
-import '../data/filipino_words_data.dart'; // Import the centralized data
+import '../data/filipino_words_structured.dart'; // Import the centralized data
+import '../user_state.dart';
+import '../services/score_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DefinitionGame extends StatefulWidget {
   final String language;
@@ -53,8 +56,8 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
     try {
       // Get words from the central data source - using multiple difficulty levels
       List<String> wordPool = [];
-      wordPool.addAll(FilipinoWordsData.getWordsByDifficulty('easy'));
-      wordPool.addAll(FilipinoWordsData.getWordsByDifficulty('medium'));
+      wordPool.addAll(FilipinoWordsStructured.getWordsByDifficulty('easy'));
+      wordPool.addAll(FilipinoWordsStructured.getWordsByDifficulty('medium'));
       
       if (wordPool.isEmpty) {
         throw Exception('No words found in the data source');
@@ -70,11 +73,11 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
       
       for (var word in wordPool) {
         // Verify word exists in the data
-        if (!FilipinoWordsData.words.containsKey(word)) {
+        if (!FilipinoWordsStructured.words.containsKey(word)) {
           continue; // Skip if word not found
         }
         
-        final wordData = FilipinoWordsData.words[word]!;
+        final wordData = FilipinoWordsStructured.words[word]!;
         
         // Verify translations exist
         if (wordData['translations'] == null || 
@@ -300,6 +303,24 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
       _questions.shuffle();
     });
     _startTimer();
+  }
+  
+  void _endGame() {
+    // Logic to handle end of game, like showing scores, etc.
+    setState(() {
+      _gameOver = true;
+    });
+    
+    // Award points based on final score
+    if (UserState.instance.isLoggedIn) {
+      final ScoreService scoreService = ScoreService();
+      scoreService.updateScore('Definition Game', _score, pointsToAward: _score * 2);
+      
+      // Award achievement points if score is above threshold
+      if (_score >= 10) {
+        scoreService.awardAchievementPoints('definition_master', 25);
+      }
+    }
   }
   
   String get _gameTitle => widget.language == 'Filipino' ? 'Laro ng Depinisyon' : 'Definition Game';
@@ -625,9 +646,9 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
                             ),
                           ),
                         ),
-                      ),
+                      )
                     );
-                  },
+                    },
                 ),
               ),
               

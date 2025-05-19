@@ -1,8 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../user_state.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ScoreService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
   // Key for SharedPreferences storage
   static const String _scoresKey = 'userScores';
   
@@ -44,6 +50,9 @@ class ScoreService {
       
       // Update game progress in SharedPreferences
       await _saveGameProgress(game, score);
+      
+      // Award points based on score
+      await UserState.instance.addPoints(score ~/ 10);
       
       return true;
     } catch (e) {
@@ -95,6 +104,11 @@ class ScoreService {
       
       // Save updated progress back to SharedPreferences
       await prefs.setString(_progressKey, jsonEncode(allProgress));
+      
+      // Check for achievements based on high score
+      if (highScore >= 50) {
+        await UserState.instance.checkForNewAchievements();
+      }
       
       return true;
     } catch (e) {
@@ -259,6 +273,94 @@ class ScoreService {
     } catch (e) {
       print('Error getting all game progress: $e');
       return {};
+    }
+  }
+  
+  // Update score and award points
+  Future<void> updateScore(String gameType, int score, {int pointsToAward = 0}) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      // Get reference to user's game data
+      final gameRef = _firestore.collection('users').doc(user.uid).collection('games').doc(gameType);
+      
+      // Get current high score
+      final gameDoc = await gameRef.get();
+      final currentHighScore = gameDoc.exists ? (gameDoc.data()?['highScore'] as int? ?? 0) : 0;
+      
+      // Only update if the new score is higher
+      if (score > currentHighScore) {
+        await gameRef.set({
+          'highScore': score,
+          'lastPlayed': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        
+        // Award points if this is a new high score
+        if (pointsToAward > 0) {
+          await UserState.instance.addPoints(pointsToAward);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating score: $e');
+      rethrow;
+    }
+  }
+  
+  // Update progress and award points
+  Future<void> updateProgress(String gameType, double progress, {int pointsToAward = 0}) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      // Get reference to user's game data
+      final gameRef = _firestore.collection('users').doc(user.uid).collection('games').doc(gameType);
+      
+      // Get current progress
+      final gameDoc = await gameRef.get();
+      final currentProgress = gameDoc.exists ? (gameDoc.data()?['progress'] as num?)?.toDouble() ?? 0.0 : 0.0;
+      
+      // Only update if new progress is greater
+      if (progress > currentProgress) {
+        await gameRef.set({
+          'progress': progress,
+          'lastPlayed': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        
+        // Award points proportional to progress increase
+        if (pointsToAward > 0) {
+          final progressDifference = progress - currentProgress;
+          final pointsEarned = (progressDifference * pointsToAward).round();
+          if (pointsEarned > 0) {
+            await UserState.instance.addPoints(pointsEarned);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error updating progress: $e');
+      rethrow;
+    }
+  }
+  
+  // New method to award points for completing game achievements
+  Future<void> awardAchievementPoints(String achievementType, int pointsToAward) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      // Record achievement in firestore
+      await _firestore.collection('users').doc(user.uid)
+          .collection('achievements').doc(achievementType).set({
+        'achieved': true,
+        'timestamp': FieldValue.serverTimestamp(),
+        'pointsAwarded': pointsToAward
+      });
+      
+      // Add points to user's total
+      await UserState.instance.addPoints(pointsToAward);
+    } catch (e) {
+      debugPrint('Error awarding achievement points: $e');
+      rethrow;
     }
   }
 }

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
 import '../main.dart'; // Import for ResponsiveUtil
-import '../data/filipino_words_data.dart'; // Import the centralized data
+import '../data/filipino_words_structured.dart'; // Import the centralized data
+import '../user_state.dart';
+import '../services/score_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum GameMode {
   baybayinToFilipino,  // Guess Filipino word from Baybayin
@@ -40,8 +43,8 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
   bool _answerChecked = false; // Add this variable to track if answer was checked
   
   // Use centralized data for the game
-  final Map<String, String> _baybayinToFilipino = FilipinoWordsData.baybayinCharacters;
-  final Map<String, String> _wordsWithBaybayin = FilipinoWordsData.baybayinWords;
+  final Map<String, String> _baybayinToFilipino = FilipinoWordsStructured.baybayinCharacters;
+  final Map<String, String> _wordsWithBaybayin = FilipinoWordsStructured.baybayinWords;
   
   // Cache localized text
   late final String _gameTitle;
@@ -314,6 +317,26 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
       }
       _restartGame();
     });
+  }
+  
+  // Award points when handling correct answers - implemented in _handleAnswer method
+
+  // At the end of game
+  void _endGame() {
+    // ...existing code...
+    
+    // Save score to Firebase and award bonus points
+    if (UserState.instance.isLoggedIn) {
+      final ScoreService scoreService = ScoreService();
+      scoreService.updateScore('Baybayin Game', _score, pointsToAward: _score * 2);
+      
+      // Award achievement points if score is above threshold
+      if (_score >= 15) {
+        scoreService.awardAchievementPoints('baybayin_master', 35);
+      }
+    }
+    
+    // ...existing code...
   }
   
   @override

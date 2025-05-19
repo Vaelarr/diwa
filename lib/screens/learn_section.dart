@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
-import '../data/filipino_words_data.dart';
+import '../data/filipino_words_structured.dart';
+import '../data/grammar_data.dart';
 import '../user_state.dart';
 import 'word_details_page.dart';
 import '../services/progress_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'dart:async';
+import 'baybayin_page.dart';
 
 class LearnSection extends StatefulWidget {
   final String language;
@@ -20,62 +19,49 @@ class LearnSection extends StatefulWidget {
   State<LearnSection> createState() => _LearnSectionState();
 }
 
-class _LearnSectionState extends State<LearnSection> {  List<Map<String, dynamic>> _lessons = [];
-  int _currentLevel = 1;
-  bool _isLoadingProgress = false;
+class _LearnSectionState extends State<LearnSection> with SingleTickerProviderStateMixin {  late TabController _tabController;
   Timer? _dbListener;
+  Map<String, List<String>> _wordsByPartOfSpeech = {};
+  List<Map<String, dynamic>> _grammarLessons = [];
 
   // Localized text getters
   String get _learnTitle =>
-      widget.language == 'Filipino' ? 'MGA ARALIN' : 'LESSONS';
+      widget.language == 'Filipino' ? 'MGA ARALIN' : 'LEARNING';
 
-  String get _beginnerTitle =>
-      widget.language == 'Filipino' ? 'Nagsisimula' : 'Beginner';
-
-  String get _intermediateTitle =>
-      widget.language == 'Filipino' ? 'Panggitnang Antas' : 'Intermediate';
-
-  String get _advancedTitle =>
-      widget.language == 'Filipino' ? 'Advanced' : 'Advanced';
-
-  String get _comingSoonText =>
-      widget.language == 'Filipino' ? 'Malapit nang Dumating' : 'Coming Soon';
-
-  String get _lessonsCompletedText =>
-      widget.language == 'Filipino' ? 'Mga Natapós na Aralin' : 'Lessons Completed';
-
-  String get _startLessonText =>
-      widget.language == 'Filipino' ? 'Simulan ang Aralin' : 'Start Lesson';
-
-  String get _continueText =>
-      widget.language == 'Filipino' ? 'Magpatuloy' : 'Continue';
-
-  String get _completedText =>
-      widget.language == 'Filipino' ? 'Natapos' : 'Completed';
-
-  String get _lockedText =>
-      widget.language == 'Filipino' ? 'Naka-lock' : 'Locked';
-
-  String get _unlockHintText =>
-      widget.language == 'Filipino'
-          ? 'Kumpletuhin ang mga naunang aralin upang i-unlock ito'
-          : 'Complete previous lessons to unlock';
+  String get _wordsTabTitle =>
+      widget.language == 'Filipino' ? 'MGA SALITA' : 'WORDS';
+      
+  String get _grammarTabTitle =>
+      widget.language == 'Filipino' ? 'GRAMATIKA' : 'GRAMMAR';
+      
+  String get _baybayinTabTitle =>
+      widget.language == 'Filipino' ? 'BAYBAYIN' : 'BAYBAYIN';
+      
+  String get _partsOfSpeechTitle =>
+      widget.language == 'Filipino' ? 'Bahagi ng Pananalita' : 'Parts of Speech';
+      
+  String get _noWordsText =>
+      widget.language == 'Filipino' ? 'Walang mga salita' : 'No words available';
+      
+  String get _viewAllText =>
+      widget.language == 'Filipino' ? 'Tingnan Lahat' : 'View All';
 
   @override
   void initState() {
     super.initState();
-    _loadLessons();
-
-    // Load progress from Firebase if user is logged in
+    _tabController = TabController(length: 3, vsync: this);
+    _loadData();
+    
+    // Load progress if user is logged in
     if (UserState.instance.isLoggedIn) {
-      _loadProgressFromFirebase();
+      _loadProgress();
       _setupRealtimeProgressListener();
     }
 
     // Listen for login state changes
     UserState.instance.loginState.listen((isLoggedIn) {
       if (isLoggedIn && mounted) {
-        _loadProgressFromFirebase();
+        _loadProgress();
         _setupRealtimeProgressListener();
       } else if (!isLoggedIn && _dbListener != null) {
         _dbListener?.cancel();
@@ -86,704 +72,774 @@ class _LearnSectionState extends State<LearnSection> {  List<Map<String, dynamic
 
   @override
   void dispose() {
-    // Clean up the database listener when the widget is removed
+    _tabController.dispose();
     _dbListener?.cancel();
     super.dispose();
   }
 
-  void _loadLessons() {
-    // Simplified approach that directly uses categories from FilipinoWordsData
-    final lessonsData = <Map<String, dynamic>>[];
+  void _loadData() {
+    _loadWordsByPartOfSpeech();
+    _loadGrammarLessons();
+  }
 
-    // Get all categories from FilipinoWordsData
-    final allCategories = FilipinoWordsData.getAllCategories();
-    final valueCategories = allCategories.where((cat) =>
-        ['character traits', 'values', 'social values', 'virtues'].contains(cat)).toList();
-    final emotionCategories = allCategories.where((cat) =>
-        ['emotions', 'feelings', 'psychological states'].contains(cat)).toList();
-    final conceptCategories = allCategories.where((cat) =>
-        ['abstract concepts', 'social terms', 'relational concepts'].contains(cat)).toList();
-
-    // Helper function to add lesson only if it has words
-    void addLessonIfHasWords(Map<String, dynamic> lesson) {
-      final wordsList = lesson['words'] as List;
-      if (wordsList.isNotEmpty) {
-        lessonsData.add(lesson);
+  void _loadWordsByPartOfSpeech() {
+    // Initialize an empty map instead of predefined categories
+    _wordsByPartOfSpeech = {};
+    
+    // Get all parts of speech from our structured data
+    List<String> allPartsOfSpeech = FilipinoWordsStructured.getAllPartsOfSpeech();
+    
+    // Log the total number of words available
+    int totalWords = FilipinoWordsStructured.words.length;
+    debugPrint('Total words in FilipinoWordsStructured: $totalWords');
+    debugPrint('Parts of speech found: ${allPartsOfSpeech.join(", ")}');
+    
+    // Group words by part of speech
+    for (var partOfSpeech in allPartsOfSpeech) {
+      List<String> words = FilipinoWordsStructured.getWordsByPartOfSpeech(partOfSpeech);
+      if (words.isNotEmpty) {
+        _wordsByPartOfSpeech[partOfSpeech] = words;
+        debugPrint('Part of speech: $partOfSpeech, Words count: ${words.length}');
       }
     }
+    
+    // Remove empty categories
+    _wordsByPartOfSpeech.removeWhere((key, value) => value.isEmpty);
+    
+    // Log the total words loaded into all categories
+    int loadedWords = _wordsByPartOfSpeech.values.fold(0, (sum, list) => sum + list.length);
+    debugPrint('Total words loaded into categories: $loadedWords');
+  }
 
-    // LEVEL 1: Beginner lessons with easy words
-    final easyWords = FilipinoWordsData.getWordsByDifficulty('easy');
-    if (easyWords.isNotEmpty) {
-      addLessonIfHasWords({
-        'id': 1,
-        'title': widget.language == 'Filipino' ? 'Pangunahing Bokabularyo' : 'Basic Vocabulary',
-        'description': widget.language == 'Filipino'
-            ? 'Matuto ng mga pangunahing salita sa Filipino'
-            : 'Learn essential Filipino words',
-        'level': 1,
-        'completed': true,
-        'progress': 1.0,
-        'duration': '15 min',
-        'icon': Icons.book,
-        'color': Colors.green,
-        'words': easyWords.take(10).toList(),
-      });
-    }
-
-    // Add Values lesson if category has words
-    if (valueCategories.isNotEmpty) {
-      final valueWords = FilipinoWordsData.getWordsByCategory(valueCategories[0]);
-      if (valueWords.isNotEmpty) {
-        addLessonIfHasWords({
-          'id': 2,
-          'title': widget.language == 'Filipino' ? 'Mga Katangiang Filipino' : 'Filipino Values',
-          'description': widget.language == 'Filipino'
-              ? 'Mga salitang nagpapakita ng mga katangiang Filipino'
-              : 'Words that showcase Filipino values',
-          'level': 1,
-          'completed': false,
-          'progress': 0.3,
-          'duration': '20 min',
-          'icon': Icons.emoji_people,
-          'color': Colors.blue,
-          'words': valueWords.take(6).toList(),
-        });
-      }
-    }
-
-    // Add Emotions lesson if category has words
-    if (emotionCategories.isNotEmpty) {
-      final emotionWords = FilipinoWordsData.getWordsByCategory(emotionCategories[0]);
-      if (emotionWords.isNotEmpty) {
-        addLessonIfHasWords({
-          'id': 3,
-          'title': widget.language == 'Filipino' ? 'Mga Emosyon' : 'Emotions',
-          'description': widget.language == 'Filipino'
-              ? 'Salitang nagpapahayag ng damdamin'
-              : 'Words expressing feelings',
-          'level': 1,
-          'completed': false,
-          'progress': 0.0,
-          'duration': '25 min',
-          'icon': Icons.emoji_emotions,
-          'color': Colors.orange,
-          'words': emotionWords.take(5).toList(),
-        });
-      }
-    }
-
-    // LEVEL 2: Intermediate lessons - only add if we have matching words
-    if (valueCategories.length > 1) {
-      final socialValueWords = FilipinoWordsData.getWordsByCategory(valueCategories[1]);
-      if (socialValueWords.isNotEmpty) {
-        addLessonIfHasWords({
-          'id': 4,
-          'title': widget.language == 'Filipino' ? 'Mga Kaugaliang Panlipunan' : 'Social Values',
-          'description': widget.language == 'Filipino'
-              ? 'Salitang may kinalaman sa pakikitungo sa lipunan'
-              : 'Words related to social interactions',
-          'level': 2,
-          'completed': false,
-          'progress': 0.0,
-          'duration': '30 min',
-          'icon': Icons.groups,
-          'color': Colors.purple,
-          'words': socialValueWords.take(5).toList(),
-        });
-      }
-    }
-
-    // Add intermediate emotions lesson with medium difficulty words
-    final mediumWords = FilipinoWordsData.getWordsByDifficulty('medium')
-        .where((word) => FilipinoWordsData.words[word]?['category']?.contains('emotions') ?? false)
-        .toList();
-
-    if (mediumWords.isNotEmpty) {
-      addLessonIfHasWords({
-        'id': 5,
-        'title': widget.language == 'Filipino' ? 'Malalim na Damdamin' : 'Deep Emotions',
-        'description': widget.language == 'Filipino'
-            ? 'Pag-unawa sa mga salitang nagpapahayag ng malalim na damdamin'
-            : 'Understanding words that express deep emotions',
-        'level': 2,
-        'completed': false,
+  void _loadGrammarLessons() {
+    _grammarLessons = GrammarData.getCategories().map((category) {
+      return {
+        'id': category['id'],
+        'title': widget.language == 'Filipino' ? category['titleFil'] : category['title'],
+        'description': widget.language == 'Filipino' 
+            ? category['descriptionFil'] 
+            : category['description'],
+        'rules': GrammarData.getRulesByCategory(category['id']),
         'progress': 0.0,
-        'duration': '35 min',
-        'icon': Icons.psychology,
-        'color': Colors.indigo,
-        'words': mediumWords.take(5).toList(),
-      });
-    }
-
-    // LEVEL 3: Advanced lessons - only if we have concepts
-    if (conceptCategories.isNotEmpty) {
-      final conceptWords = FilipinoWordsData.getWordsByCategory(conceptCategories[0]);
-      if (conceptWords.isNotEmpty) {
-        addLessonIfHasWords({
-          'id': 6,
-          'title': widget.language == 'Filipino' ? 'Abstraktong Konsepto' : 'Abstract Concepts',
-          'description': widget.language == 'Filipino'
-              ? 'Mga salitang nagpapahayag ng malalim na kaisipan'
-              : 'Words expressing deep concepts',
-          'level': 3,
-          'completed': false,
-          'progress': 0.0,
-          'duration': '40 min',
-          'icon': Icons.auto_awesome,
-          'color': Colors.red,
-          'words': conceptWords.take(5).toList(),
-        });
-      }
-    }
-
-    // Hard difficulty words for advanced vocabulary
-    final hardWords = FilipinoWordsData.getWordsByDifficulty('hard');
-    if (hardWords.isNotEmpty) {
-      addLessonIfHasWords({
-        'id': 7,
-        'title': widget.language == 'Filipino' ? 'Malalim na Bokabularyo' : 'Advanced Vocabulary',
-        'description': widget.language == 'Filipino'
-            ? 'Mga hindi karaniwang salitang Filipino'
-            : 'Uncommon Filipino words',
-        'level': 3,
         'completed': false,
-        'progress': 0.0,
-        'duration': '45 min',
-        'icon': Icons.menu_book,
-        'color': Colors.teal,
-        'words': hardWords.take(5).toList(),
-      });
-    }
-
-    setState(() {
-      _lessons = lessonsData;
-    });
-  }  // New method to load progress from SharedPreferences
-  Future<void> _loadProgressFromFirebase() async {
-    if (!UserState.instance.isLoggedIn || _lessons.isEmpty) return;
-
-    setState(() {
-      _isLoadingProgress = true;
-    });
-
+      };
+    }).toList();
+  }  void _loadProgress() async {
+    // Load progress for grammar lessons from Firestore
+    if (!UserState.instance.isLoggedIn) return;
+    
     try {
-      final allProgress = await ProgressService.instance.getAllLessonProgress();
-
-      if (allProgress.isNotEmpty && mounted) {
-        setState(() {
-          for (var lesson in _lessons) {
-            final lessonId = lesson['id'].toString();
-            if (allProgress.containsKey(lessonId)) {
-              final lessonProgress = allProgress[lessonId];
-              lesson['progress'] = lessonProgress['progress'] ?? 0.0;
-              lesson['completed'] = lessonProgress['completed'] ?? false;
-            }
+      final progressData = await ProgressService.instance.getLessonProgress(UserState.instance.uid);
+      
+      setState(() {
+        // Update grammar lessons progress
+        for (var lesson in _grammarLessons) {
+          final lessonId = lesson['id'];
+          final grammarKey = 'grammar_$lessonId';
+          
+          // Check if there's data for this specific lesson
+          if (progressData.containsKey(grammarKey) && 
+              progressData[grammarKey] is Map &&
+              progressData[grammarKey].containsKey('progress')) {
+            
+            final lessonProgress = (progressData[grammarKey]['progress'] as num).toDouble();
+            lesson['progress'] = lessonProgress;
+            lesson['completed'] = lessonProgress >= 1.0;
+          } else {
+            // Default to no progress
+            lesson['progress'] = 0.0;
+            lesson['completed'] = false;
           }
-        });
-      }
+        }
+      });
+      
+      debugPrint('Grammar lessons progress loaded successfully');
     } catch (e) {
-      debugPrint('Error loading lesson progress: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingProgress = false;
-        });
-      }
+      debugPrint('Error loading progress: $e');
     }
   }
-    // Set up periodic refresh for lesson progress updates
+
   void _setupRealtimeProgressListener() {
-    if (!UserState.instance.isLoggedIn || _lessons.isEmpty) return;
-    
-    // Cancel any existing listener
-    _dbListener?.cancel();
-    
     // Set up a timer to refresh progress data periodically
-    _dbListener = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (!mounted) return;
-      _loadProgressFromLocalStorage();
+    _dbListener = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && UserState.instance.isLoggedIn) {
+        _loadProgress();
+      }
     });
   }
-  
-  // Load progress from SharedPreferences
-  Future<void> _loadProgressFromLocalStorage() async {
-    if (!UserState.instance.isLoggedIn || _lessons.isEmpty) return;
-
-    setState(() {
-      _isLoadingProgress = true;
-    });
-
-    try {
-      final allProgress = await ProgressService.instance.getAllLessonProgress();
-
-      if (allProgress.isNotEmpty && mounted) {
-        setState(() {
-          for (var lesson in _lessons) {
-            final lessonId = lesson['id'].toString();
-            if (allProgress.containsKey(lessonId)) {
-              final lessonProgress = allProgress[lessonId];
-              lesson['progress'] = lessonProgress['progress'] ?? 0.0;
-              lesson['completed'] = lessonProgress['completed'] ?? false;
-            }
+  void _navigateToWordDetails(String word) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WordDetailsPage(
+          word: word,
+          language: widget.language,
+        ),
+      ),
+    );
+  }
+  void _navigateToGrammarLesson(Map<String, dynamic> lesson) {
+    // Update progress for this lesson - when viewing a lesson, increment progress by 20%
+    if (UserState.instance.isLoggedIn) {
+      final lessonId = lesson['id'];
+      final currentProgress = lesson['progress'] as double;
+      
+      // Only update if not already completed
+      if (currentProgress < 1.0) {
+        // Increment by 20% but don't exceed 100%
+        final newProgress = (currentProgress + 0.2).clamp(0.0, 1.0);
+        
+        // Update Firestore through the progress service
+        ProgressService.instance.updateGrammarLessonProgress(
+          lessonId: lessonId,
+          progress: newProgress,
+        ).then((success) {
+          if (success) {
+            // Update the local state
+            setState(() {
+              lesson['progress'] = newProgress;
+              lesson['completed'] = newProgress >= 1.0;
+            });
           }
         });
       }
-    } catch (e) {
-      debugPrint('Error loading lesson progress: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingProgress = false;
-        });
-      }
     }
-  }
-
-  void _openLesson(Map<String, dynamic> lesson) {
-    // Simplified dialog that focuses on words from FilipinoWordsData
+    
+    // Show the grammar lesson dialog
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          lesson['title'],
-          style: const TextStyle(color: Colors.brown, fontWeight: FontWeight.bold),
+      builder: (context) => GrammarLessonDialog(
+        lesson: lesson,
+        language: widget.language,
+        onLessonCompleted: (lessonId) {
+          // This callback will be called when the user marks a lesson as completed
+          _markLessonAsCompleted(lessonId);
+        },
+      ),
+    );
+  }
+  
+  void _markLessonAsCompleted(String lessonId) {
+    if (!UserState.instance.isLoggedIn) return;
+    
+    // Find the lesson
+    final lesson = _grammarLessons.firstWhere((l) => l['id'] == lessonId, orElse: () => {});
+    if (lesson.isEmpty) return;
+    
+    // Mark as completed (100%)
+    ProgressService.instance.updateGrammarLessonProgress(
+      lessonId: lessonId,
+      progress: 1.0,
+    ).then((success) {
+      if (success) {
+        setState(() {
+          lesson['progress'] = 1.0;
+          lesson['completed'] = true;
+        });
+      }
+    });
+  }
+
+  void _navigateToBaybayin() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BaybayinPage(
+          language: widget.language,
         ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Description
-              Text(
-                lesson['description'],
-                style: const TextStyle(fontSize: 16),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_learnTitle),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: _wordsTabTitle),
+            Tab(text: _grammarTabTitle),
+            Tab(text: _baybayinTabTitle),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildWordsTab(),
+          _buildGrammarTab(),
+          _buildBaybayinTab(),
+        ],
+      ),
+    );
+  }
+  Widget _buildWordsTab() {
+    if (_wordsByPartOfSpeech.isEmpty) {
+      return Center(
+        child: Text(_noWordsText, style: TextStyle(fontSize: 18)),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          
+          // Parts of Speech Title
+          Text(
+            _partsOfSpeechTitle,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          
+          // Parts of Speech Cards
+          ..._wordsByPartOfSpeech.entries.map((entry) {
+            final partOfSpeech = entry.key;
+            final words = entry.value;
+            
+            // Get description text for this part of speech
+            final description = FilipinoWordsStructured.partsOfSpeechDescriptions[partOfSpeech] ?? '';
+            
+            // Display name based on language
+            String displayName;
+            switch (partOfSpeech) {
+              case 'pangngalan':
+                displayName = widget.language == 'Filipino' ? 'Pangngalan' : 'Nouns';
+                break;
+              case 'panghalip':
+                displayName = widget.language == 'Filipino' ? 'Panghalip' : 'Pronouns';
+                break;
+              case 'pandiwa':
+                displayName = widget.language == 'Filipino' ? 'Pandiwa' : 'Verbs';
+                break;
+              case 'pang-uri':
+                displayName = widget.language == 'Filipino' ? 'Pang-uri' : 'Adjectives';
+                break;
+              case 'pang-abay':
+                displayName = widget.language == 'Filipino' ? 'Pang-abay' : 'Adverbs';
+                break;
+              case 'pang-ukol':
+                displayName = widget.language == 'Filipino' ? 'Pang-ukol' : 'Prepositions';
+                break;
+              case 'pangatnig':
+                displayName = widget.language == 'Filipino' ? 'Pangatnig' : 'Conjunctions';
+                break;
+              case 'pandamdam':
+                displayName = widget.language == 'Filipino' ? 'Pandamdam' : 'Interjections';
+                break;
+              default:
+                displayName = partOfSpeech;
+            }
+            
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    color: Theme.of(context).primaryColor,
+                    width: double.infinity,
+                    child: Text(
+                      displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          description,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Display the first 5 words
+                        ...words.take(5).map((word) => 
+                          ListTile(
+                            title: Text(word),
+                            subtitle: Text(
+                              FilipinoWordsStructured.words[word]?['englishDefinitions']?.first ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                            onTap: () => _navigateToWordDetails(word),
+                          )
+                        ).toList(),
+                        
+                        // View all button if more than 5 words
+                        if (words.length > 5)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () {
+                                // Show all words in this part of speech
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => WordListDialog(
+                                    title: displayName,
+                                    words: words,
+                                    onWordTap: _navigateToWordDetails,
+                                    language: widget.language,
+                                  ),
+                                );
+                              },
+                              child: Text(_viewAllText + ' (${words.length})'),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-
-              // Word list with simple formatting
-              if ((lesson['words'] as List).isNotEmpty) ...[
-                Text(
-                  widget.language == 'Filipino' ? 'Mga Salita:' : 'Words:',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-
-                // Simple word list
-                ...lesson['words'].map<Widget>((word) {
-                  final wordData = FilipinoWordsData.words[word];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: InkWell(
-                      onTap: () => _navigateToWordDetails(word),
-                      child: Row(
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+  Widget _buildGrammarTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          
+          // Grammar Categories
+          ..._grammarLessons.map((lesson) => 
+            Card(
+              margin: const EdgeInsets.only(bottom: 16),
+              elevation: 2,
+              child: InkWell(
+                onTap: () => _navigateToGrammarLesson(lesson),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      color: Theme.of(context).primaryColor,
+                      width: double.infinity,
+                      child: Text(
+                        lesson['title'],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.text_fields, size: 16, color: Colors.brown),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  word,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    decoration: TextDecoration.underline,
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (wordData != null)
-                                  Text(
-                                    wordData['translations']['english'],
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[700],
-                                    ),
-                                  ),
-                              ],
+                          Text(
+                            lesson['description'],
+                            style: const TextStyle(
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          LinearProgressIndicator(
+                            value: lesson['progress'],
+                            backgroundColor: Colors.grey[300],
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              lesson['completed'] ? Colors.green : Theme.of(context).primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${(lesson['progress'] * 100).toStringAsFixed(0)}% ${widget.language == 'Filipino' ? 'Nakumpleto' : 'Completed'}',
+                            style: TextStyle(
+                              color: lesson['completed'] ? Colors.green : Theme.of(context).primaryColor,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                }),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            child: Text(widget.language == 'Filipino' ? 'Pag-aralan' : 'Study Words'),
-            onPressed: () {
-              // Only update progress if user is logged in
-              if (UserState.instance.isLoggedIn) {
-                _updateLessonProgress(lesson, 0.3, false);
-              }
-              Navigator.pop(context);
-
-              // Navigate to first word
-              if ((lesson['words'] as List).isNotEmpty) {
-                _navigateToWordDetails(lesson['words'][0]);
-              }
-            },
-          ),
-          if (UserState.instance.isLoggedIn && lesson['progress'] > 0)
-            TextButton.icon(
-              icon: Icon(
-                (lesson['completed'] as bool) ? Icons.check_circle : Icons.check_circle_outline,
-                color: Colors.green,
+                  ],
+                ),
               ),
-              label: Text(
-                (lesson['completed'] as bool)
-                    ? (widget.language == 'Filipino' ? 'Tapos na' : 'Completed')
-                    : (widget.language == 'Filipino' ? 'Markahan bilang Tapos' : 'Mark as Complete'),
-              ),
-              onPressed: () {
-                _updateLessonProgress(lesson, 1.0, true);
-                Navigator.pop(context);
-              },
-            ),
-          TextButton(
-            child: Text(widget.language == 'Filipino' ? 'Isara' : 'Close'),
-            onPressed: () => Navigator.pop(context),
-          ),
+            )
+          ).toList(),
         ],
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: const Color(0xFFF8F4E1),
       ),
     );
   }
-
-  // Update this method to save progress to Firebase
-  void _updateLessonProgress(Map<String, dynamic> lesson, double progress, bool completed) async {
-    if (!UserState.instance.isLoggedIn) return;
-
-    try {
-      // Update local state
-      setState(() {
-        final index = _lessons.indexWhere((l) => l['id'] == lesson['id']);
-        if (index != -1) {
-          _lessons[index]['progress'] = progress;
-          _lessons[index]['completed'] = completed;
-        }
-      });
-
-      // Save to Firebase
-      await ProgressService.instance.saveLessonProgress(
-        lessonId: lesson['id'].toString(),
-        progress: progress,
-        completed: completed,
-      );
-    } catch (e) {
-      debugPrint('Error updating lesson progress: $e');
-    }
-  }
-
-  void _navigateToWordDetails(String word) {
-    Navigator.pop(context);
-
-    if (FilipinoWordsData.words.containsKey(word)) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => WordDetailsPage(
-            word: word,
-            language: widget.language,
+  Widget _buildBaybayinTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          
+          // Baybayin Content
+          Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            elevation: 2,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Theme.of(context).primaryColor,
+                  width: double.infinity,
+                  child: Text(
+                    widget.language == 'Filipino' ? 'Panimula sa Baybayin' : 'Introduction to Baybayin',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.language == 'Filipino'
+                            ? 'Ang Baybayin ay isang sinaunang sistema ng pagsulat na ginamit ng mga Tagalog bago dumating ang mga Kastila. Ang salitang "baybayin" ay tumutukoy sa alpabeto, na bawat karakter ay kumakatawan sa isang pantig.'
+                            : 'Baybayin is an ancient Philippine script that was used primarily by the Tagalog people before the Spanish colonization. The word "baybayin" refers to the alphabet, with each character representing a syllable.',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _navigateToBaybayin,
+                        child: Text(widget.language == 'Filipino' 
+                            ? 'Magpatuloy sa Aralin ng Baybayin' 
+                            : 'Continue to Baybayin Lesson'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Word details not available for "$word"'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
+          
+          // Baybayin Samples
+          Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            elevation: 2,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Theme.of(context).primaryColor,
+                  width: double.infinity,
+                  child: Text(
+                    widget.language == 'Filipino' ? 'Mga Halimbawa ng Baybayin' : 'Baybayin Samples',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Display a few Baybayin character samples
+                      ...FilipinoWordsStructured.baybayinCharacters.entries.take(5).map((entry) => 
+                        ListTile(
+                          title: Text('${entry.key} = ${entry.value}'),
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Center(
+                              child: Text(
+                                entry.value,
+                                style: const TextStyle(fontSize: 24),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ).toList(),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _navigateToBaybayin,
+                        child: Text(widget.language == 'Filipino' 
+                            ? 'Tingnan Lahat ng mga Karakter' 
+                            : 'View All Characters'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Baybayin Words
+          Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            elevation: 2,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Theme.of(context).primaryColor,
+                  width: double.infinity,
+                  child: Text(
+                    widget.language == 'Filipino' ? 'Mga Salita sa Baybayin' : 'Words in Baybayin',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Display a few words with their Baybayin equivalent
+                      ...FilipinoWordsStructured.baybayinWords.entries.take(5).map((entry) => 
+                        ListTile(
+                          title: Text(entry.key),
+                          subtitle: Text(entry.value, style: const TextStyle(fontSize: 20)),
+                        ),
+                      ).toList(),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _navigateToBaybayin,
+                        child: Text(widget.language == 'Filipino' 
+                            ? 'Tingnan Lahat ng mga Salita' 
+                            : 'View All Words'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+// Dialog to show all words in a part of speech
+class WordListDialog extends StatelessWidget {
+  final String title;
+  final List<String> words;
+  final Function(String) onWordTap;
+  final String language;
+
+  const WordListDialog({
+    super.key,
+    required this.title,
+    required this.words,
+    required this.onWordTap,
+    required this.language,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isTablet = ResponsiveUtil.isTablet(context);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F4E1),
-      appBar: AppBar(
-        title: Text(
-          'DIWA',
-          style: TextStyle(
-            color: Colors.brown,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Montserrat',
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.brown),
-          onPressed: () => Navigator.pushReplacementNamed(context, '/home'),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Simple header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              _learnTitle,
+    return Dialog(
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Colors.brown,
               ),
-              textAlign: TextAlign.center,
             ),
-          ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: words.length,
+                itemBuilder: (context, index) {
+                  final word = words[index];
+                  return ListTile(
+                    title: Text(word),
+                    subtitle: Text(
+                      FilipinoWordsStructured.words[word]?['englishDefinitions']?.first ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      onWordTap(word);
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(language == 'Filipino' ? 'Isara' : 'Close'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-          // Simple level tabs
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+// Dialog to show grammar lesson details
+class GrammarLessonDialog extends StatelessWidget {
+  final Map<String, dynamic> lesson;
+  final String language;
+  final Function(String)? onLessonCompleted;
+
+  const GrammarLessonDialog({
+    super.key,
+    required this.lesson,
+    required this.language,
+    this.onLessonCompleted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rules = lesson['rules'] as List<dynamic>;
+    
+    return Dialog(
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              lesson['title'],
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              lesson['description'],
+              style: const TextStyle(
+                fontSize: 16,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: rules.length,
+                itemBuilder: (context, index) {
+                  final rule = rules[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            language == 'Filipino' ? rule['titleFil'] : rule['title'],
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            language == 'Filipino' ? rule['explanationFil'] : rule['explanation'],
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Examples:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...((rule['examples'] ?? []) as List<dynamic>).map((example) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (example['filipino'] != null)
+                                    Text(
+                                      example['filipino'],
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  if (example['english'] != null)
+                                    Text(
+                                      example['english'],
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildSimpleTab(1, _beginnerTitle),
-                _buildSimpleTab(2, _intermediateTitle),
-                _buildSimpleTab(3, _advancedTitle),
+                if (!lesson['completed'] && onLessonCompleted != null)
+                  ElevatedButton(
+                    onPressed: () {
+                      onLessonCompleted!(lesson['id']);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                    ),
+                    child: Text(
+                      language == 'Filipino' ? 'Markahan Bilang Tapos' : 'Mark as Completed',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(language == 'Filipino' ? 'Isara' : 'Close'),
+                ),
               ],
             ),
-          ),
-
-          // Completion status if logged in
-          if (UserState.instance.isLoggedIn)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                "$_lessonsCompletedText: ${_lessons.where((l) => l['completed']).length}/${_lessons.length}",
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.green,
-                ),
-              ),
-            ),
-
-          // Lessons list
-          Expanded(
-            child: _buildSimpleLessonsList(),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home),
-            label: widget.language == 'Filipino' ? 'Tahanan' : 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.videogame_asset),
-            label: widget.language == 'Filipino' ? 'Laro' : 'Games',
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
-            label: widget.language == 'Filipino' ? 'Profile' : 'Profile',
-          ),
-        ],
-        selectedItemColor: Colors.brown,
-        unselectedItemColor: Colors.brown.withOpacity(0.6),
-        backgroundColor: Colors.white,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacementNamed(context, '/home');
-          } else if (index == 1) {
-            Navigator.pushReplacementNamed(context, '/games');
-          } else if (index == 2) {
-            Navigator.pushReplacementNamed(context, '/profile');
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildSimpleTab(int level, String title) {
-    final isSelected = _currentLevel == level;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _currentLevel = level;
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? Colors.brown : Colors.transparent,
-                width: 2,
-              ),
-            ),
-          ),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? Colors.brown : Colors.grey,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSimpleLessonsList() {
-    final filteredLessons = _lessons.where((lesson) => lesson['level'] == _currentLevel).toList();
-
-    if (filteredLessons.isEmpty) {
-      return Center(
-        child: Text(
-          _comingSoonText,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.brown.withOpacity(0.7),
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: filteredLessons.length,
-      itemBuilder: (context, index) {
-        final lesson = filteredLessons[index];
-        return _buildSimpleLessonCard(lesson);
-      },
-    );
-  }
-
-  Widget _buildSimpleLessonCard(Map<String, dynamic> lesson) {
-    final bool isCompleted = lesson['completed'] as bool;
-    final double progress = lesson['progress'] as double;
-    final Color lessonColor = lesson['color'] as Color;
-    final List<String> wordList = lesson['words'] as List<String>;
-
-    // Reset progress display for non-logged-in users
-    final bool showProgress = UserState.instance.isLoggedIn && progress > 0;
-    final bool showCompleted = UserState.instance.isLoggedIn && isCompleted;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: () => _openLesson(lesson),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title row with icon
-              Row(
-                children: [
-                  Icon(lesson['icon'] as IconData, color: lessonColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      lesson['title'] as String,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  if (showCompleted)
-                    const Icon(Icons.check_circle, color: Colors.green, size: 16)
-                ],
-              ),
-
-              // Description
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  lesson['description'] as String,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-
-              // Preview of words (show first 3)
-              if (wordList.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Wrap(
-                    spacing: 8,
-                    children: wordList.take(3).map((word) => Chip(
-                      label: Text(word, style: const TextStyle(fontSize: 12)),
-                      backgroundColor: lessonColor.withOpacity(0.2),
-                      padding: EdgeInsets.zero,
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    )).toList(),
-                  ),
-                ),
-
-              // Duration & progress indicator
-              Row(
-                children: [
-                  Text(
-                    lesson['duration'] as String,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  const Spacer(),
-                  if (showProgress && !isCompleted)
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: lessonColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                ],
-              ),
-
-              // Add onPressed handler to mark lessons as complete
-              if (UserState.instance.isLoggedIn && lesson['progress'] > 0)
-                TextButton.icon(
-                  icon: Icon(
-                    (lesson['completed'] as bool) ? Icons.check_circle : Icons.check_circle_outline,
-                    color: Colors.green,
-                  ),
-                  label: Text(
-                    (lesson['completed'] as bool)
-                        ? (widget.language == 'Filipino' ? 'Tapos na' : 'Completed')
-                        : (widget.language == 'Filipino' ? 'Markahan bilang Tapos' : 'Mark as Complete'),
-                  ),
-                  onPressed: () {
-                    _updateLessonProgress(lesson, 1.0, true);
-                  },
-                ),
-
-              // Simple progress bar - only show if logged in
-              if (showProgress)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(lessonColor),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
       ),
     );

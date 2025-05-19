@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'services/auth_service.dart';
 
 class UserState {
@@ -20,16 +21,24 @@ class UserState {
   static String _languagePreference = 'English';
   static final AuthService _authService = AuthService();
   static bool _isFirstLaunch = true;
-  
-  // New achievement-related fields with default values of 0
-  static int _completedLessons = 0;
+    // Achievement-related fields with default values of 0
   static int _achievements = 0;
   static int _totalPoints = 0;
-  static int _wordsLearned = 0;
+  
+  // Achievement flags to track which achievements have been unlocked
+  static final Map<String, bool> _achievementFlags = {
+    'points_100': false,
+    'points_500': false,
+    'saved_words_10': false,
+  };
+  
+  // Add points tracking
+  int _userPoints = 0;
   
   // Stream controllers for state changes
   static final StreamController<bool> _loginStateController = StreamController<bool>.broadcast();
   static final StreamController<String> _languageChangeController = StreamController<String>.broadcast();
+  final _pointsStreamController = StreamController<int>.broadcast();
   
   // List of language change callbacks
   final List<VoidCallback> _languageChangeListeners = [];
@@ -43,16 +52,20 @@ class UserState {
   bool get isFirstLaunch => _isFirstLaunch;
   
   // Getters for achievement data
-  int get completedLessons => _completedLessons;
   int get achievements => _achievements;
   int get totalPoints => _totalPoints;
-  int get wordsLearned => _wordsLearned;
+  
+  // Get current user points
+  int get userPoints => _userPoints;
   
   // Stream to listen for login state changes
   Stream<bool> get loginState => _loginStateController.stream;
   
   // Stream to listen for auth state changes directly from Firebase
   Stream<User?> get authStateChanges => _authService.authStateChanges;
+  
+  // Stream to listen for points changes
+  Stream<int> get pointsStream => _pointsStreamController.stream;
   
   // Initialize user state
   Future<void> initialize() async {
@@ -64,12 +77,19 @@ class UserState {
       _userFullName = prefs.getString('userFullName') ?? '';
       _languagePreference = prefs.getString('languagePreference') ?? 'English';
       _isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+        // Initialize achievement data with user-specific keys
+      final achievementsKey = getUserSpecificKey('achievements');
+      final totalPointsKey = getUserSpecificKey('totalPoints');
       
-      // Initialize achievement data
-      _completedLessons = prefs.getInt('completedLessons') ?? 0;
-      _achievements = prefs.getInt('achievements') ?? 0;
-      _totalPoints = prefs.getInt('totalPoints') ?? 0;
-      _wordsLearned = prefs.getInt('wordsLearned') ?? 0;
+      _achievements = prefs.getInt(achievementsKey) ?? 0;
+      _totalPoints = prefs.getInt(totalPointsKey) ?? 0;
+      
+      // Load achievement flags
+      if (_uid.isNotEmpty) {
+        _achievementFlags['points_100'] = prefs.getBool('achievement_points_100_$_uid') ?? false;
+        _achievementFlags['points_500'] = prefs.getBool('achievement_points_500_$_uid') ?? false;
+        _achievementFlags['saved_words_10'] = prefs.getBool('achievement_saved_words_10_$_uid') ?? false;
+      }
       
       // Verify with Firebase if user is really logged in
       final currentUser = _authService.currentUser;
@@ -85,6 +105,9 @@ class UserState {
         await setUserEmail(currentUser.email ?? '');
         await setUserFullName(currentUser.displayName ?? '');
       }
+      
+      // Initialize points
+      await getUserPoints();
     } catch (e) {
       debugPrint('Error initializing UserState: $e');
       // Reset to default state on error
@@ -181,15 +204,14 @@ class UserState {
   // Reset all achievements to 0
   Future<void> resetAchievements() async {
     final prefs = await SharedPreferences.getInstance();
-    _completedLessons = 0;
     _achievements = 0;
     _totalPoints = 0;
-    _wordsLearned = 0;
     
-    await prefs.setInt('completedLessons', 0);
-    await prefs.setInt('achievements', 0);
-    await prefs.setInt('totalPoints', 0);
-    await prefs.setInt('wordsLearned', 0);
+    final achievementsKey = getUserSpecificKey('achievements');
+    final totalPointsKey = getUserSpecificKey('totalPoints');
+    
+    await prefs.setInt(achievementsKey, 0);
+    await prefs.setInt(totalPointsKey, 0);
   }
   
   // Get current user name from Firebase (if available)
@@ -316,43 +338,15 @@ class UserState {
     }
   }
   
-  // Check if user has completed a specific lesson
-  Future<bool> hasCompletedLesson(String lessonId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool('lesson_$lessonId') ?? false;
-    } catch (e) {
-      debugPrint('Error checking lesson completion: $e');
-      return false;
-    }
-  }
+  // Get userId for storage purposes
+  String get userId => _uid;
   
-  // Mark a lesson as completed
-  Future<void> markLessonCompleted(String lessonId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('lesson_$lessonId', true);
-      
-      // Update completed lessons count
-      _completedLessons++;
-      await prefs.setInt('completedLessons', _completedLessons);
-      
-      // Add points for completing a lesson
-      await addPoints(10);
-    } catch (e) {
-      debugPrint('Error marking lesson as completed: $e');
+  // Helper method to generate user-specific storage keys
+  String getUserSpecificKey(String baseKey) {
+    if (_isLoggedIn && _uid.isNotEmpty) {
+      return '${baseKey}_${_uid}';
     }
-  }
-  
-  // Get completedLessons count
-  Future<int> getCompletedLessonsCount() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt('completedLessons') ?? 0;
-    } catch (e) {
-      debugPrint('Error getting completed lessons count: $e');
-      return 0;
-    }
+    return '${baseKey}_guest';
   }
   
   // Add achievement
@@ -360,7 +354,8 @@ class UserState {
     try {
       final prefs = await SharedPreferences.getInstance();
       _achievements++;
-      await prefs.setInt('achievements', _achievements);
+      final userSpecificKey = getUserSpecificKey('achievements');
+      await prefs.setInt(userSpecificKey, _achievements);
       
       // Add points for unlocking an achievement
       await addPoints(15);
@@ -373,7 +368,8 @@ class UserState {
   Future<int> getAchievementsCount() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt('achievements') ?? 0;
+      final userSpecificKey = getUserSpecificKey('achievements');
+      return prefs.getInt(userSpecificKey) ?? 0;
     } catch (e) {
       debugPrint('Error getting achievements count: $e');
       return 0;
@@ -385,47 +381,63 @@ class UserState {
     try {
       final prefs = await SharedPreferences.getInstance();
       _totalPoints += points;
-      await prefs.setInt('totalPoints', _totalPoints);
+      final userSpecificKey = getUserSpecificKey('totalPoints');
+      await prefs.setInt(userSpecificKey, _totalPoints);
+      
+      // Update user points in Firestore
+      await setUserPoints(_totalPoints);
     } catch (e) {
       debugPrint('Error adding points: $e');
     }
+  }
+  
+  // Set user points
+  Future<void> setUserPoints(int points) async {
+    if (!isLoggedIn) return;
+    
+    try {      final user = _authService.currentUser;
+      if (user != null) {
+        // Import and use FirebaseFirestore directly instead of through authService
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'points': points,
+        });
+        
+        _userPoints = points;
+        _pointsStreamController.add(_userPoints);
+      }
+    } catch (e) {
+      debugPrint('Error setting user points: $e');
+      rethrow;
+    }
+  }
+    // Get current user points
+  Future<int> getUserPoints() async {
+    if (!isLoggedIn) return 0;
+    
+    try {
+      final user = _authService.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        _userPoints = doc.data()?['points'] as int? ?? 0;
+        _pointsStreamController.add(_userPoints);
+        return _userPoints;
+      }
+    } catch (e) {
+      debugPrint('Error getting user points: $e');
+    }
+    
+    return 0;
   }
   
   // Get total points
   Future<int> getTotalPoints() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt('totalPoints') ?? 0;
+      final userSpecificKey = getUserSpecificKey('totalPoints');
+      return prefs.getInt(userSpecificKey) ?? 0;
     } catch (e) {
       debugPrint('Error getting total points: $e');
       return 0;
-    }
-  }
-  
-  // Get words learned count
-  Future<int> getWordsLearnedCount() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getInt('wordsLearned') ?? 0;
-    } catch (e) {
-      debugPrint('Error getting words learned count: $e');
-      return 0;
-    }
-  }
-  
-  // Get list of completed lessons
-  Future<List<String>> getCompletedLessons() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final allKeys = prefs.getKeys();
-      return allKeys
-          .where((key) => key.startsWith('lesson_'))
-          .where((key) => prefs.getBool(key) == true)
-          .map((key) => key.replaceFirst('lesson_', ''))
-          .toList();
-    } catch (e) {
-      debugPrint('Error getting completed lessons: $e');
-      return [];
     }
   }
   
@@ -439,10 +451,6 @@ class UserState {
       if (!savedWords.contains(word)) {
         savedWords.add(word);
         await prefs.setStringList('saved_words_$_uid', savedWords);
-        
-        // Update words learned count
-        _wordsLearned++;
-        await prefs.setInt('wordsLearned', _wordsLearned);
       }
     } catch (e) {
       debugPrint('Error saving word: $e');
@@ -492,6 +500,17 @@ class UserState {
     }
   }
   
+  // Get saved words count
+  Future<int> getSavedWordsCount() async {
+    try {
+      final words = await getSavedWords();
+      return words.length;
+    } catch (e) {
+      debugPrint('Error getting saved words count: $e');
+      return 0;
+    }
+  }
+  
   // Set font size preference
   Future<void> setFontSizePreference(double fontSize) async {
     final prefs = await SharedPreferences.getInstance();
@@ -504,9 +523,128 @@ class UserState {
     return prefs.getDouble('fontSizePreference');
   }
   
-  // Clean up resources when app is closed
+  // Refresh all progress metrics at once - useful for profile page
+  Future<Map<String, int>> refreshAllProgressMetrics() async {
+    if (!_isLoggedIn) {
+      return {
+        'achievements': 0,
+        'totalPoints': 0
+      };
+    }
+    
+    try {
+      _achievements = await getAchievementsCount();
+      _totalPoints = await getTotalPoints();
+      
+      return {
+        'achievements': _achievements,
+        'totalPoints': _totalPoints
+      };
+    } catch (e) {
+      debugPrint('Error refreshing progress metrics: $e');
+      return {
+        'achievements': _achievements,
+        'totalPoints': _totalPoints
+      };
+    }
+  }
+  
+  // Update learning progress - a helper method to trigger after completing activities
+  Future<void> updateLearningProgress({int pointsEarned = 0}) async {
+    if (!_isLoggedIn) return;
+    
+    try {
+      // Add points if provided
+      if (pointsEarned > 0) {
+        await addPoints(pointsEarned);
+      }
+      
+      // Check for achievements based on current stats
+      await checkForNewAchievements();
+    } catch (e) {
+      debugPrint('Error updating learning progress: $e');
+    }
+  }
+  
+  // Check for new achievements based on current stats
+  Future<void> checkForNewAchievements() async {
+    if (!_isLoggedIn) return;
+    
+    try {
+      // Refresh counts
+      _achievements = await getAchievementsCount();
+      _totalPoints = await getTotalPoints();
+        // Achievement for points earned milestones
+      if (_totalPoints >= 100 && _achievementFlags['points_100'] == false) {
+        await unlockAchievement();
+        _achievementFlags['points_100'] = true;
+        // Store achievement flag
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('achievement_points_100_$_uid', true);
+      }
+      
+      if (_totalPoints >= 500 && _achievementFlags['points_500'] == false) {
+        await unlockAchievement();
+        _achievementFlags['points_500'] = true;
+        // Store achievement flag
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('achievement_points_500_$_uid', true);      }
+      
+      // Achievement for saved words milestones
+      int savedWordsCount = await getSavedWordsCount();
+      if (savedWordsCount >= 10 && _achievementFlags['saved_words_10'] == false) {
+        await unlockAchievement();
+        _achievementFlags['saved_words_10'] = true;
+        // Store achievement flag
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('achievement_saved_words_10_$_uid', true);
+      }
+      
+      // Points-based achievements
+      if (_totalPoints >= 100 && _achievements < 1) {
+        await unlockAchievement();
+      } else if (_totalPoints >= 500 && _achievements < 2) {
+        await unlockAchievement();
+      } else if (_totalPoints >= 1000 && _achievements < 3) {
+        await unlockAchievement();
+      }
+    } catch (e) {
+      debugPrint('Error checking for achievements: $e');
+    }
+  }  // Clean up resources when app is closed
   static void dispose() {
     _loginStateController.close();
     _languageChangeController.close();
+    // The instance's _pointsStreamController needs to be closed by the instance
+    instance._pointsStreamController.close();
+  }
+
+  // Update user profile
+  Future<bool> updateUserProfile({String? name}) async {
+    try {
+      if (!isLoggedIn) return false;
+      
+      final user = _authService.currentUser;
+      if (user == null) return false;
+      
+      // Update display name if provided
+      if (name != null && name.isNotEmpty) {
+        // Update in Firebase Auth
+        await user.updateDisplayName(name);
+        
+        // Update in Firestore
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'displayName': name,
+        });
+        
+        // Update local state
+        await setUserFullName(name);
+      }
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error updating user profile: $e');
+      return false;
+    }
   }
 }

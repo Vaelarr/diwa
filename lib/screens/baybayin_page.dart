@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async'; // For debouncing
 import '../main.dart'; // Import for ResponsiveUtil
-import '../data/filipino_words_data.dart'; // Import the centralized data
+import '../data/filipino_words_structured.dart'; // Import the centralized data
 
 class BaybayinPage extends StatefulWidget {
   final String language;
@@ -38,7 +38,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   late final String _translatedTextWillAppearHere;
 
   // Use centralized data
-  final Map<String, String> _baybayinChars = FilipinoWordsData.baybayinCharacters;
+  final Map<String, String> _baybayinChars = FilipinoWordsStructured.baybayinCharacters;
   
   // Expanded lessons with more content
   static final _lessons = [
@@ -61,7 +61,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   // Generate character samples from centralized data with improved structure
   List<Map<String, dynamic>> get _characterSamples {
     final List<Map<String, dynamic>> samples = [];
-    final characters = FilipinoWordsData.baybayinCharacters;
+    final characters = FilipinoWordsStructured.baybayinCharacters;
     
     // Add vowels
     samples.add({
@@ -196,7 +196,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
 
   void _initializeTexts() {
     // Initialize texts once
-    _baybayinTitle = widget.language == 'Filipino' ? 'Baybayin' : 'Baybayin';
+    _baybayinTitle = widget.language == 'Filipino' ? 'Baybayin' : 'Baybayin Script';
     _learnTabTitle = widget.language == 'Filipino' ? 'Matuto' : 'Learn';
     _practiceTabTitle = widget.language == 'Filipino' ? 'Magsanay' : 'Practice';
     _translateTabTitle = widget.language == 'Filipino' ? 'Isalin' : 'Translate';
@@ -238,34 +238,43 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
     
     // Use Future to avoid blocking the UI
     Future.microtask(() {
-      input = input.toLowerCase();
-      String result = '';
+      try {
+        input = input.toLowerCase();
+        String result = '';
 
-      // Simplified translation algorithm
-      for (int i = 0; i < input.length; i++) {
-        if (i < input.length - 1) {
-          String pair = input.substring(i, i + 2);
-          if (_baybayinChars.containsKey(pair)) {
-            result += _baybayinChars[pair]!;
-            i++;
-            continue;
+        // Simplified translation algorithm
+        for (int i = 0; i < input.length; i++) {
+          if (i < input.length - 1) {
+            String pair = input.substring(i, i + 2);
+            if (_baybayinChars.containsKey(pair)) {
+              result += _baybayinChars[pair]!;
+              i++;
+              continue;
+            }
+          }
+
+          String char = input[i];
+          if (_baybayinChars.containsKey(char)) {
+            result += _baybayinChars[char]!;
+          } else if (char == ' ') {
+            result += ' ';
           }
         }
 
-        String char = input[i];
-        if (_baybayinChars.containsKey(char)) {
-          result += _baybayinChars[char]!;
-        } else if (char == ' ') {
-          result += ' ';
+        // Update UI on next frame
+        if (mounted) {
+          setState(() {
+            _translatedText = result;
+            _isTranslating = false;
+          });
         }
-      }
-
-      // Update UI on next frame
-      if (mounted) {
-        setState(() {
-          _translatedText = result;
-          _isTranslating = false;
-        });
+      } catch (e) {
+        // Silently handle errors
+        if (mounted) {
+          setState(() {
+            _isTranslating = false;
+          });
+        }
       }
     });
   }
@@ -274,17 +283,19 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
+    final primaryColor = Theme.of(context).primaryColor;
     
     return Scaffold(
       appBar: AppBar(
         title: Text(_baybayinTitle, 
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: isTablet ? 26 : 22,
+            fontSize: isTablet ? 24 : 20,
+            color: Colors.white,
           ),
         ),
         backgroundColor: Colors.brown,
-        elevation: 4,
+        elevation: 2,
         bottom: TabBar(
           controller: _tabController,
           tabs: [
@@ -298,7 +309,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
           indicatorWeight: 3,
         ),
       ),
-      backgroundColor: const Color(0xFFF8F4E1),
+      backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: TabBarView(
           controller: _tabController,
@@ -316,7 +327,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   Widget _buildLearnTab(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-    final padding = isTablet ? 24.0 : 16.0;
+    final padding = isTablet ? 20.0 : 16.0;
     
     return ListView.builder(
       padding: EdgeInsets.all(padding),
@@ -324,14 +335,13 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
       itemBuilder: (context, index) {
         final lesson = _lessons[index];
         return Card(
-          elevation: 4,
-          shadowColor: Colors.brown.withOpacity(0.3),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          elevation: 2,
           margin: EdgeInsets.only(bottom: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isTablet ? 20 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -341,7 +351,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.brown.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         lesson['icon'] as IconData,
@@ -353,10 +363,10 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
                     Expanded(
                       child: Text(
                         lesson['title'] as String,
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: isTablet ? 20 : 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.brown,
+                          color: Colors.brown[700],
                         ),
                       ),
                     ),
@@ -366,26 +376,25 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
                 Text(
                   lesson['description'] as String,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontStyle: FontStyle.italic,
+                    fontSize: isTablet ? 16 : 14,
                     color: Colors.grey[700],
                   ),
                 ),
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(isTablet ? 18 : 14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey[200]!,
                       width: 1,
                     ),
                   ),
                   child: Text(
                     lesson['content'] as String,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: isTablet ? 16 : 14,
                       color: Colors.grey[800],
                       height: 1.5,
                     ),
@@ -402,31 +411,34 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   Widget _buildPracticeTab(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-    final padding = isTablet ? 24.0 : 16.0;
-    final crossAxisCount = isTablet ? 3 : 2;
+    final padding = isTablet ? 20.0 : 16.0;
+    final crossAxisCount = isTablet ? (screenWidth > 900 ? 4 : 3) : 2;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(padding, padding, padding, 12),
+          padding: EdgeInsets.fromLTRB(padding, padding, padding, padding/2),
           child: Card(
-            elevation: 3,
-            shadowColor: Colors.brown.withOpacity(0.3),
+            elevation: 1,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(10),
             ),
+            margin: EdgeInsets.symmetric(vertical: 4),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.symmetric(
+                vertical: isTablet ? 14 : 10,
+                horizontal: isTablet ? 16 : 12,
+              ),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.brown.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.info_outline,
                       color: Colors.brown,
                       size: 24,
@@ -438,9 +450,9 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
                       widget.language == 'Filipino' 
                           ? 'I-tap ang bawat titik para makita ang detalye'
                           : 'Tap each character to see details',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.brown,
+                      style: TextStyle(
+                        fontSize: isTablet ? 16 : 14,
+                        color: Colors.brown[700],
                       ),
                     ),
                   ),
@@ -454,96 +466,98 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
             padding: EdgeInsets.all(padding),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
-              childAspectRatio: 0.8,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+              childAspectRatio: isTablet ? 0.9 : 0.8,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
             ),
             itemCount: _characterSamples.length,
             itemBuilder: (context, index) {
               final character = _characterSamples[index];
               
-              return Card(
-                elevation: 4,
-                shadowColor: Colors.brown.withOpacity(0.3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: InkWell(
-                  onTap: () {
-                    _showCharacterDetails(context, character);
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.brown.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              character['character'] as String,
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.brown,
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  return Card(
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        _showCharacterDetails(context, character);
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(vertical: constraints.maxHeight * 0.12),
+                            color: Colors.brown,
+                            width: double.infinity,
+                            child: Center(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  character['character'] as String,
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 36 : 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.brown.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '$_latinText: ${character['latin']}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.brown,
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '$_latinText: ${character['latin']}',
+                                    style: TextStyle(
+                                      fontSize: isTablet ? 16 : 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.brown[700],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Spacer(),
+                                  Align(
+                                    alignment: Alignment.bottomRight,
+                                    child: TextButton(
+                                      onPressed: () {
+                                        _showCharacterDetails(context, character);
+                                      },
+                                      style: TextButton.styleFrom(
+                                        minimumSize: Size(0, 0),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isTablet ? 12 : 8, 
+                                          vertical: isTablet ? 6 : 4
+                                        ),
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                      child: Text(
+                                        widget.language == 'Filipino' ? 'Tingnan' : 'View',
+                                        style: TextStyle(
+                                          color: Colors.brown,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: isTablet ? 14 : 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.language == 'Filipino' ? 'Mga Halimbawa' : 'Examples',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.brown.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.brown.withOpacity(0.2),
-                            ),
-                          ),
-                          child: Text(
-                            widget.language == 'Filipino' ? 'Tingnan' : 'View',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.brown,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                }
               );
             },
           ),
@@ -554,116 +568,184 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   
   void _showCharacterDetails(BuildContext context, Map<String, dynamic> character) {
     final examples = character['examples'] as List<String>;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
     
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        constraints: BoxConstraints(
+          maxHeight: screenHeight * 0.7,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
           ),
         ),
-        child: Column(
-          children: [
-            Container(
-              width: 50,
-              height: 5,
-              margin: const EdgeInsets.only(top: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 50,
+                height: 5,
+                margin: const EdgeInsets.only(top: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.brown.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        character['character'] as String,
-                        style: const TextStyle(
-                          fontSize: 60,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.brown,
+              Padding(
+                padding: EdgeInsets.all(isTablet ? 24.0 : 20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: isTablet ? 120 : 100,
+                      height: isTablet ? 120 : 100,
+                      decoration: BoxDecoration(
+                        color: Colors.brown,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          character['character'] as String,
+                          style: TextStyle(
+                            fontSize: isTablet ? 70 : 60,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    '${character['latin']}',
-                    style: const TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.brown,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    widget.language == 'Filipino' ? 'Mga Halimbawa' : 'Examples',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.brown.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.brown.withOpacity(0.2),
+                    const SizedBox(height: 16),
+                    Text(
+                      '${character['latin']}',
+                      style: TextStyle(
+                        fontSize: isTablet ? 32 : 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown[700],
                       ),
                     ),
-                    child: Column(
-                      children: examples.map((example) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.brown,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          topRight: Radius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        widget.language == 'Filipino' ? 'Mga Halimbawa' : 'Examples',
+                        style: TextStyle(
+                          fontSize: isTablet ? 18 : 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
+                        ),
+                        border: Border.all(
+                          color: Colors.grey[200]!,
+                        ),
+                      ),
+                      child: Column(
+                        children: examples.map((example) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.arrow_right, color: Colors.brown),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  example,
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 18 : 16,
+                                    color: Colors.grey[800],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Card(
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
                         child: Row(
                           children: [
-                            const Icon(Icons.arrow_right, color: Colors.brown),
-                            const SizedBox(width: 8),
-                            Text(
-                              example,
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[800],
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.brown.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.info_outline,
+                                color: Colors.brown,
+                                size: isTablet ? 20 : 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                widget.language == 'Filipino' 
+                                    ? 'Sa Baybayin, ang mga katinig ay likas na may kasunod na "a"'
+                                    : 'In Baybayin, consonants inherently have an "a" sound',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 14 : 13,
+                                  color: Colors.grey[800],
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      )).toList(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    widget.language == 'Filipino' 
-                        ? 'Paalala: Sa Baybayin, ang mga katinig (consonants) ay likas na may kasunod na "a"'
-                        : 'Note: In Baybayin, consonants inherently have an "a" sound',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey[600],
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.brown,
+                        ),
+                        child: Text(
+                          widget.language == 'Filipino' ? 'Isara' : 'Close',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -672,7 +754,7 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
   Widget _buildTranslateTab(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth > 600;
-    final padding = isTablet ? 24.0 : 16.0;
+    final padding = isTablet ? 20.0 : 16.0;
     
     return Padding(
       padding: EdgeInsets.all(padding),
@@ -680,13 +762,12 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Card(
-            elevation: 4,
-            shadowColor: Colors.brown.withOpacity(0.3),
+            elevation: 1,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isTablet ? 20 : 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -696,123 +777,137 @@ class _BaybayinPageState extends State<BaybayinPage> with SingleTickerProviderSt
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: Colors.brown.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.translate,
                           color: Colors.brown,
-                          size: 22,
+                          size: isTablet ? 22 : 20,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Text(
                         _translateTabTitle,
-                        style: const TextStyle(
-                          fontSize: 20,
+                        style: TextStyle(
+                          fontSize: isTablet ? 20 : 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.brown,
+                          color: Colors.brown[700],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: isTablet ? 16 : 12),
                   TextField(
                     decoration: InputDecoration(
                       hintText: _inputHintText,
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: Colors.grey[50],
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 16 : 14,
+                        horizontal: 16,
+                      ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey[300]!,
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey[300]!,
                         ),
                       ),
                       prefixIcon: const Icon(Icons.text_fields),
                     ),
+                    style: TextStyle(fontSize: isTablet ? 16 : 14),
                     onChanged: (value) {
                       _debouncedTranslate(value);
                     },
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      _translateText(_inputText);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.brown,
-                      foregroundColor: Colors.white,
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                  SizedBox(height: isTablet ? 16 : 14),
+                  Align(
+                    alignment: Alignment.center,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        _translateText(_inputText);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.brown,
+                        foregroundColor: Colors.white,
+                        elevation: 1,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isTablet ? 20 : 16,
+                          vertical: isTablet ? 12 : 10,
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.autorenew, size: isTablet ? 20 : 18),
+                          SizedBox(width: isTablet ? 8 : 6),
+                          Text(
+                            _translateButtonText,
+                            style: TextStyle(fontSize: isTablet ? 16 : 14),
+                          ),
+                        ],
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.autorenew),
-                        const SizedBox(width: 8),
-                        Text(_translateButtonText),
-                      ],
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: isTablet ? 20 : 16),
           Expanded(
             child: Card(
-              elevation: 4,
-              shadowColor: Colors.brown.withOpacity(0.3),
+              elevation: 1,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Container(
                 width: double.infinity,
+                padding: EdgeInsets.all(isTablet ? 20 : 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_translatedText.isEmpty)
-                      Icon(
-                        Icons.text_snippet_outlined,
-                        size: 48,
-                        color: Colors.grey[400],
-                      ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        _translatedText.isNotEmpty
-                            ? _translatedText
-                            : _translatedTextWillAppearHere,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 24,
-                          color: _translatedText.isNotEmpty
-                              ? Colors.brown
+                child: Center(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_translatedText.isEmpty)
+                          Icon(
+                            Icons.text_snippet_outlined,
+                            size: isTablet ? 48 : 40,
+                            color: Colors.grey[400],
+                          ),
+                        SizedBox(height: isTablet ? 16 : 12),
+                        Text(
+                          _translatedText.isNotEmpty
+                              ? _translatedText
+                              : _translatedTextWillAppearHere,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: _translatedText.isNotEmpty
+                                ? (isTablet ? 28 : 24)
+                                : (isTablet ? 18 : 16),
+                            color: _translatedText.isNotEmpty
+                              ? Colors.brown[700]
                               : Colors.grey[500],
-                          fontWeight: _translatedText.isNotEmpty
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          height: 1.5,
+                            fontWeight: _translatedText.isNotEmpty
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            height: 1.5,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

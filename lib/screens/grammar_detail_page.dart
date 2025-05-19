@@ -17,36 +17,36 @@ class GrammarDetailPage extends StatelessWidget {
     final String title = language == 'Filipino' 
         ? category['titleFil'] 
         : category['title'];
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           title,
-          style: const TextStyle(
-            fontFamily: 'Montserrat',
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Colors.brown,
+            fontSize: isTablet ? 22 : 18,
           ),
         ),
-        backgroundColor: const Color(0xFFF8F4E1),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.brown),
+        backgroundColor: Colors.indigo,
+        elevation: 2,
       ),
-      body: Container(
-        color: const Color(0xFFF8F4E1),
+      backgroundColor: Colors.grey[100],
+      body: SafeArea(
         child: ListView.builder(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(isTablet ? 20.0 : 16.0),
           itemCount: rules.length,
           itemBuilder: (context, index) {
             final rule = rules[index];
-            return _buildRuleCard(rule);
+            return _buildRuleCard(rule, isTablet);
           },
         ),
       ),
     );
   }
 
-  Widget _buildRuleCard(Map<String, dynamic> rule) {
+  Widget _buildRuleCard(Map<String, dynamic> rule, bool isTablet) {
     final String title = language == 'Filipino' 
         ? rule['titleFil'] 
         : rule['title'];
@@ -59,43 +59,44 @@ class GrammarDetailPage extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
-      elevation: 3.0,
+      elevation: 2.0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(isTablet ? 20.0 : 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 18.0,
+              style: TextStyle(
+                fontSize: isTablet ? 18.0 : 16.0,
                 fontWeight: FontWeight.bold,
-                color: Colors.brown,
+                color: Colors.indigo[700],
               ),
             ),
-            const SizedBox(height: 12.0),
+            SizedBox(height: isTablet ? 12.0 : 8.0),
             Text(
               explanation,
               style: TextStyle(
-                fontSize: 14.0,
-                color: Colors.brown.shade700,
+                fontSize: isTablet ? 14.0 : 13.0,
+                color: Colors.grey[800],
+                height: 1.5,
               ),
             ),
             if (examples.isNotEmpty) ...[
-              const SizedBox(height: 16.0),
-              const Text(
-                'Examples:',
+              SizedBox(height: isTablet ? 16.0 : 12.0),
+              Text(
+                language == 'Filipino' ? 'Mga Halimbawa:' : 'Examples:',
                 style: TextStyle(
-                  fontSize: 16.0,
+                  fontSize: isTablet ? 16.0 : 14.0,
                   fontWeight: FontWeight.bold,
-                  color: Colors.brown,
+                  color: Colors.indigo[700],
                 ),
               ),
-              const SizedBox(height: 8.0),
-              ...examples.map((example) => _buildExampleItem(example)),
+              SizedBox(height: isTablet ? 8.0 : 6.0),
+              ...examples.map((example) => _buildExampleItem(example, isTablet)),
             ],
           ],
         ),
@@ -103,34 +104,36 @@ class GrammarDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildExampleItem(Map<String, String> example) {
+  Widget _buildExampleItem(Map<String, String> example, bool isTablet) {
     final String filipino = example['filipino'] ?? '';
     final String english = example['english'] ?? '';
     
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: EdgeInsets.only(bottom: isTablet ? 8.0 : 6.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.brown.withOpacity(0.1),
+          color: Colors.indigo.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8.0),
         ),
-        padding: const EdgeInsets.all(12.0),
+        padding: EdgeInsets.all(isTablet ? 12.0 : 10.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               filipino,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.brown,
+                color: Colors.indigo[700],
+                fontSize: isTablet ? 14.0 : 13.0,
               ),
             ),
-            const SizedBox(height: 4.0),
+            SizedBox(height: isTablet ? 4.0 : 2.0),
             Text(
               english,
               style: TextStyle(
-                color: Colors.brown.shade600,
+                color: Colors.grey[700],
                 fontStyle: FontStyle.italic,
+                fontSize: isTablet ? 13.0 : 12.0,
               ),
             ),
           ],
