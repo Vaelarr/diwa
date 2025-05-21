@@ -1,6 +1,6 @@
-# temp_diwa
+# diwa
 
-A new Flutter project.
+A Filipino Learning App project.
 
 ## Getting Started
 
