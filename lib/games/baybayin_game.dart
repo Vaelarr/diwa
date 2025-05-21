@@ -777,93 +777,112 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
   
   Widget _buildLevelCompleteScreen() {
     final isTablet = ResponsiveUtil.isTablet(context);
+    final screenSize = MediaQuery.of(context).size;
     
-    return Center(
-      child: Card(
-        elevation: 6, // Reduced from 8
-        shadowColor: Colors.amber.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20), // Reduced from 24
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: screenSize.height - 
+                     (MediaQuery.of(context).padding.top + 
+                      MediaQuery.of(context).padding.bottom + 
+                      (isTablet ? 90.0 : 70.0)), // AppBar height
         ),
-        margin: EdgeInsets.all(isTablet ? 24 : 16), // Reduced for phones
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 28 : 20), // Reduced from 32
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0.6, end: 1.0),
-                duration: const Duration(seconds: 1),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.2),
-                        shape: BoxShape.circle,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(isTablet ? 24 : 16),
+            child: Card(
+              elevation: 6,
+              shadowColor: Colors.amber.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(isTablet ? 28 : 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0.6, end: 1.0),
+                      duration: const Duration(seconds: 1),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            padding: EdgeInsets.all(screenSize.width * 0.05),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.emoji_events,
+                              size: screenSize.width * 0.15,
+                              color: Colors.amber,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _levelCompleteText,
+                      style: TextStyle(
+                        fontSize: isTablet ? 32 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown,
                       ),
-                      child: const Icon(
-                        Icons.emoji_events,
-                        size: 80,
-                        color: Colors.amber,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.brown.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '$_levelText ${_level - 1} $_finalScoreText: $_score',
+                        style: TextStyle(
+                          fontSize: isTablet ? 24 : 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown[700],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20), // Reduced from 24
-              Text(
-                _levelCompleteText,
-                style: TextStyle(
-                  fontSize: isTablet ? 32 : 24, // Reduced from 36/28
-                  fontWeight: FontWeight.bold,
-                  color: Colors.brown,
+                    const SizedBox(height: 24),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.arrow_forward),
+                        label: Text(
+                          _nextLevelText,
+                          style: TextStyle(
+                            fontSize: isTablet ? 18 : 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: _proceedToNextLevel,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.brown,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.06,
+                            vertical: isTablet ? 20 : 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 3,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12), // Reduced from 16
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.brown.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  '$_levelText ${_level - 1} $_finalScoreText: $_score',
-                  style: TextStyle(
-                    fontSize: isTablet ? 24 : 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.brown[700],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24), // Reduced from 32
-              ElevatedButton.icon(
-                icon: const Icon(Icons.arrow_forward),
-                label: Text(
-                  _nextLevelText,
-                  style: TextStyle(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: _proceedToNextLevel,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.brown,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 40 : 32,
-                    vertical: isTablet ? 20 : 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 3,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -872,126 +891,150 @@ class _BaybayinGameState extends State<BaybayinGame> with SingleTickerProviderSt
   
   Widget _buildGameOverScreen() {
     final isTablet = ResponsiveUtil.isTablet(context);
+    final screenSize = MediaQuery.of(context).size;
     
-    return Center(
-      child: Card(
-        elevation: 6, // Reduced from 8
-        shadowColor: Colors.brown.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20), // Reduced from 24
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: screenSize.height - 
+                     (MediaQuery.of(context).padding.top + 
+                      MediaQuery.of(context).padding.bottom + 
+                      (isTablet ? 90.0 : 70.0)), // AppBar height
         ),
-        margin: EdgeInsets.all(isTablet ? 24 : 16), // Reduced for phones
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 28 : 20), // Reduced from 32
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0.6, end: 1.0),
-                duration: const Duration(seconds: 1),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.brown.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.sentiment_dissatisfied,
-                        size: 80,
-                        color: Colors.brown[600],
-                      ),
-                    ),
-                  );
-                },
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(isTablet ? 24 : 16),
+            child: Card(
+              elevation: 6,
+              shadowColor: Colors.brown.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              const SizedBox(height: 20), // Reduced from 24
-              Text(
-                _gameOverText,
-                style: TextStyle(
-                  fontSize: isTablet ? 32 : 24, // Reduced from 36/28
-                  fontWeight: FontWeight.bold,
-                  color: Colors.brown,
-                ),
-              ),
-              const SizedBox(height: 12), // Reduced from 16
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.brown.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+              child: Padding(
+                padding: EdgeInsets.all(isTablet ? 28 : 20),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0.6, end: 1.0),
+                      duration: const Duration(seconds: 1),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            padding: EdgeInsets.all(screenSize.width * 0.05),
+                            decoration: BoxDecoration(
+                              color: Colors.brown.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.sentiment_dissatisfied,
+                              size: screenSize.width * 0.15,
+                              color: Colors.brown[600],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
                     Text(
-                      '$_finalScoreText: $_score',
+                      _gameOverText,
                       style: TextStyle(
-                        fontSize: isTablet ? 24 : 20,
+                        fontSize: isTablet ? 32 : 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.brown[700],
+                        color: Colors.brown,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.brown.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '$_finalScoreText: $_score',
+                            style: TextStyle(
+                              fontSize: isTablet ? 24 : 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.brown[700],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$_levelText: $_level',
+                            style: TextStyle(
+                              fontSize: isTablet ? 20 : 16,
+                              color: Colors.brown[600],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$_levelText: $_level',
-                      style: TextStyle(
-                        fontSize: isTablet ? 20 : 16,
-                        color: Colors.brown[600],
-                      ),
+                    const SizedBox(height: 24),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.replay),
+                            label: Text(
+                              _playAgainText,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            onPressed: _restartGame,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.brown,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenSize.width * 0.06,
+                                vertical: isTablet ? 16 : 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              elevation: 3,
+                            ),
+                          ),
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.swap_horiz),
+                            label: Text(_switchToText),
+                            onPressed: _switchGameMode,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.brown,
+                              side: const BorderSide(color: Colors.brown),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenSize.width * 0.06,
+                                vertical: isTablet ? 16 : 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24), // Reduced from 32
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.replay),
-                    label: Text(
-                      _playAgainText,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    onPressed: _restartGame,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.brown,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 3,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.swap_horiz),
-                    label: Text(_switchToText),
-                    onPressed: _switchGameMode,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.brown,
-                      side: const BorderSide(color: Colors.brown),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),

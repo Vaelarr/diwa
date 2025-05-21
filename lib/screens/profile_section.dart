@@ -195,8 +195,13 @@ class _ProfileSectionState extends State<ProfileSection> {
       ? 'Sigurado ka bang gusto mong mag-logout?'
       : 'Are you sure you want to logout?';
   String get _cancelText =>
-      widget.language == 'Filipino' ? 'Kanselahin' : 'Cancel';  String get _profileSettingsText =>
-      widget.language == 'Filipino' ? 'PROFILE' : 'PROFILE';@override  Widget build(BuildContext context) {
+      widget.language == 'Filipino' ? 'Kanselahin' : 'Cancel';
+  
+  String get _profileSettingsText =>
+      widget.language == 'Filipino' ? 'PROFILE' : 'PROFILE';
+
+  @override
+  Widget build(BuildContext context) {
     // Reset force rebuild flag
     _forceRebuild = false;
 
@@ -749,11 +754,11 @@ class _ProfileSectionState extends State<ProfileSection> {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: Colors.purple.withOpacity(0.1),
+                                    color: Colors.brown.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Icon(Icons.text_fields_outlined,
-                                      color: Colors.purple),
+                                      color: Colors.brown),
                                 ),
                                 const SizedBox(width: 16),
                                 Text(_fontSizeText,
@@ -765,15 +770,15 @@ class _ProfileSectionState extends State<ProfileSection> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.purple.withOpacity(0.1),
+                                    color: Colors.brown.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     '${_fontSize.toStringAsFixed(1)}',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.purple,
+                                      color: Colors.brown,
                                     ),
                                   ),
                                 ),
@@ -786,12 +791,12 @@ class _ProfileSectionState extends State<ProfileSection> {
                                 Expanded(
                                   child: SliderTheme(
                                     data: SliderThemeData(
-                                      activeTrackColor: Colors.purple,
+                                      activeTrackColor: Colors.brown,
                                       inactiveTrackColor:
-                                          Colors.purple.withOpacity(0.2),
-                                      thumbColor: Colors.purple,
+                                          Colors.brown.withOpacity(0.2),
+                                      thumbColor: Colors.brown,
                                       overlayColor:
-                                          Colors.purple.withOpacity(0.2),
+                                          Colors.brown.withOpacity(0.2),
                                       thumbShape:
                                           const RoundSliderThumbShape(
                                               enabledThumbRadius: 10),

@@ -20,7 +20,7 @@ class DefinitionGame extends StatefulWidget {
 }
 
 class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProviderStateMixin {
-  int _score = 0;
+  int _correctAnswers = 0; // Changed from _score to _correctAnswers
   int _questionIndex = 0;
   bool _gameOver = false;
   String? _selectedAnswer;
@@ -112,6 +112,9 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
                       : 'No definition available';
         }
         
+        // Sanitize the definition to remove or mask the correct answer
+        definition = _sanitizeDefinition(definition, englishTranslation, word);
+        
         // Add to our questions list
         _questions.add({
           'word': word,
@@ -191,9 +194,16 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
       final definition = widget.language == 'Filipino' ? pair['definition_tl'] : pair['definition_en'];
       final choices = _generateFallbackChoices(pair['translation'] as String, fallbackWordPairs);
       
+      // Sanitize fallback definitions too
+      final sanitizedDefinition = _sanitizeDefinition(
+        definition as String, 
+        pair['translation'] as String,
+        pair['word'] as String
+      );
+      
       _questions.add({
         'word': pair['word'],
-        'definition': definition,
+        'definition': sanitizedDefinition,
         'choices': choices,
         'correctAnswer': pair['translation'],
       });
@@ -254,6 +264,33 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
     return choices;
   }
   
+  // New method to sanitize definitions by removing or masking the correct answer
+  String _sanitizeDefinition(String definition, String correctAnswer, String originalWord) {
+    // Case-insensitive check for the correct answer in the definition
+    final lowerDefinition = definition.toLowerCase();
+    final lowerCorrectAnswer = correctAnswer.toLowerCase();
+    final lowerOriginalWord = originalWord.toLowerCase();
+    
+    if (lowerDefinition.contains(lowerCorrectAnswer)) {
+      // Option 1: Replace with blanks 
+      return definition.replaceAll(
+        RegExp(correctAnswer, caseSensitive: false), 
+        '______'
+      );
+    }
+    
+    // Also check for the original word (Tagalog) in the definition
+    if (lowerDefinition.contains(lowerOriginalWord)) {
+      // Option 1: Replace with blanks 
+      return definition.replaceAll(
+        RegExp(originalWord, caseSensitive: false), 
+        '______'
+      );
+    }
+    
+    return definition;
+  }
+  
   void _checkAnswer(String answer) {
     // Prevent multiple submissions
     if (_isAnimating) return;
@@ -270,7 +307,7 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
       _isAnimating = true;
       
       if (answer == correctAnswer) {
-        _score += 10 + _timeLeft; // Add points with time bonus
+        _correctAnswers += 1; // Simply increment correct answers counter
       }
     });
     
@@ -287,6 +324,7 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
             _startTimer();
           } else {
             _gameOver = true;
+            _endGame(); // Call _endGame when the game is over
           }
         });
       }
@@ -295,7 +333,7 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
   
   void _restartGame() {
     setState(() {
-      _score = 0;
+      _correctAnswers = 0; // Reset correct answers instead of score
       _questionIndex = 0;
       _gameOver = false;
       _selectedAnswer = null;
@@ -306,25 +344,26 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
   }
   
   void _endGame() {
-    // Logic to handle end of game, like showing scores, etc.
+    // Logic to handle end of game
     setState(() {
       _gameOver = true;
     });
     
-    // Award points based on final score
+    // Award achievement points if answers are above threshold
     if (UserState.instance.isLoggedIn) {
       final ScoreService scoreService = ScoreService();
-      scoreService.updateScore('Definition Game', _score, pointsToAward: _score * 2);
+      // No more score multiplier, just award based on correct answers
+      scoreService.updateScore('Definition Game', _correctAnswers, pointsToAward: _correctAnswers * 10);
       
       // Award achievement points if score is above threshold
-      if (_score >= 10) {
+      if (_correctAnswers >= 3) { // Changed threshold to 3 correct answers
         scoreService.awardAchievementPoints('definition_master', 25);
       }
     }
   }
   
   String get _gameTitle => widget.language == 'Filipino' ? 'Laro ng Depinisyon' : 'Definition Game';
-  String get _scoreText => widget.language == 'Filipino' ? 'Iskor' : 'Score';
+  String get _scoreText => widget.language == 'Filipino' ? 'Tamang Sagot' : 'Correct';
   String get _questionText => widget.language == 'Filipino' ? 'Tanong' : 'Question';
   String get _correctText => widget.language == 'Filipino' ? 'Tama!' : 'Correct!';
   String get _incorrectText => widget.language == 'Filipino' ? 'Mali!' : 'Incorrect!';
@@ -402,7 +441,7 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
           padding: EdgeInsets.all(padding),
           child: Column(
             children: [
-              // Game info bar with improved styling
+              // Game info bar with improved styling - updated to show correct answers
               Card(
                 elevation: 3,
                 shadowColor: Colors.brown.withOpacity(0.2),
@@ -422,11 +461,11 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
                               color: Colors.amber.withOpacity(0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.star, color: Colors.amber, size: 18),
+                            child: const Icon(Icons.check_circle, color: Colors.green, size: 18),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '$_scoreText: $_score',
+                            '$_scoreText: $_correctAnswers',
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -722,93 +761,112 @@ class _DefinitionGameState extends State<DefinitionGame> with SingleTickerProvid
   
   Widget _buildGameOverScreen() {
     final isTablet = ResponsiveUtil.isTablet(context);
+    final screenSize = MediaQuery.of(context).size;
     
-    return Center(
-      child: Card(
-        elevation: 6,
-        shadowColor: Colors.brown.withOpacity(0.3),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: screenSize.height - 
+                    (MediaQuery.of(context).padding.top + 
+                     MediaQuery.of(context).padding.bottom + 
+                     (isTablet ? 90.0 : 70.0)), // AppBar height
         ),
-        margin: EdgeInsets.all(isTablet ? 24 : 16),
-        child: Padding(
-          padding: EdgeInsets.all(isTablet ? 28 : 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0.6, end: 1.0),
-                duration: const Duration(seconds: 1),
-                curve: Curves.elasticOut,
-                builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.brown.withOpacity(0.2),
-                        shape: BoxShape.circle,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(isTablet ? 24 : 16),
+            child: Card(
+              elevation: 6,
+              shadowColor: Colors.brown.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(isTablet ? 28 : 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0.6, end: 1.0),
+                      duration: const Duration(seconds: 1),
+                      curve: Curves.elasticOut,
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            padding: EdgeInsets.all(screenSize.width * 0.05),
+                            decoration: BoxDecoration(
+                              color: Colors.brown.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.emoji_events,
+                              size: screenSize.width * 0.15,
+                              color: Colors.amber,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      _gameOverText,
+                      style: TextStyle(
+                        fontSize: isTablet ? 32 : 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown,
                       ),
-                      child: Icon(
-                        Icons.emoji_events,
-                        size: 80,
-                        color: Colors.amber,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.brown.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        '$_finalScoreText: $_correctAnswers/$_totalQuestions',
+                        style: TextStyle(
+                          fontSize: isTablet ? 24 : 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.brown[700],
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _gameOverText,
-                style: TextStyle(
-                  fontSize: isTablet ? 32 : 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.brown,
+                    const SizedBox(height: 24),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.replay),
+                        label: Text(
+                          _playAgainText,
+                          style: TextStyle(
+                            fontSize: isTablet ? 18 : 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        onPressed: _restartGame,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.brown,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.06,
+                            vertical: isTablet ? 20 : 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 3,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.brown.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  '$_finalScoreText: $_score/$_totalQuestions',
-                  style: TextStyle(
-                    fontSize: isTablet ? 24 : 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.brown[700],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.replay),
-                label: Text(
-                  _playAgainText,
-                  style: TextStyle(
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: _restartGame,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.brown,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 40 : 32,
-                    vertical: isTablet ? 20 : 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 3,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

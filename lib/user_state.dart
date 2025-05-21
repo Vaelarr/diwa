@@ -77,7 +77,8 @@ class UserState {
       _userFullName = prefs.getString('userFullName') ?? '';
       _languagePreference = prefs.getString('languagePreference') ?? 'English';
       _isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
-        // Initialize achievement data with user-specific keys
+      
+      // Initialize achievement data with user-specific keys
       final achievementsKey = getUserSpecificKey('achievements');
       final totalPointsKey = getUserSpecificKey('totalPoints');
       
@@ -91,20 +92,11 @@ class UserState {
         _achievementFlags['saved_words_10'] = prefs.getBool('achievement_saved_words_10_$_uid') ?? false;
       }
       
+      // Set persistence to LOCAL to ensure the user stays logged in after app exit
+      await _authService.setPersistence();
+      
       // Verify with Firebase if user is really logged in
-      final currentUser = _authService.currentUser;
-      if (currentUser == null && _isLoggedIn) {
-        // Firebase says user is logged out but our prefs say logged in
-        // This could happen if token expired or user was logged out on another device
-        await logout();
-      } else if (currentUser != null && !_isLoggedIn) {
-        // Firebase says user is logged in but our prefs say logged out
-        // Update our prefs to match Firebase
-        await setLoggedIn(true);
-        await setUid(currentUser.uid);
-        await setUserEmail(currentUser.email ?? '');
-        await setUserFullName(currentUser.displayName ?? '');
-      }
+      await _verifyAndRestoreSession();
       
       // Initialize points
       await getUserPoints();
@@ -115,6 +107,67 @@ class UserState {
       _uid = '';
       _userEmail = '';
       _userFullName = '';
+    }
+  }
+  
+  // New method to verify and restore the user session
+  Future<void> _verifyAndRestoreSession() async {
+    final currentUser = _authService.currentUser;
+    final prefs = await SharedPreferences.getInstance();
+    
+    if (currentUser != null) {
+      // Firebase says user is logged in - update local state if needed
+      if (!_isLoggedIn || _uid != currentUser.uid) {
+        await setLoggedIn(true);
+        await setUid(currentUser.uid);
+        await setUserEmail(currentUser.email ?? '');
+        
+        // Get display name if available
+        if (currentUser.displayName != null && currentUser.displayName!.isNotEmpty) {
+          await setUserFullName(currentUser.displayName!);
+        } else if (_userFullName.isEmpty) {
+          // Try to fetch display name from Firestore if not available in Auth
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .get();
+                
+            if (doc.exists && doc.data()?['displayName'] != null) {
+              final displayName = doc.data()!['displayName'] as String;
+              await setUserFullName(displayName);
+            }
+          } catch (e) {
+            debugPrint('Error fetching user data from Firestore: $e');
+          }
+        }
+      }
+    } else if (_isLoggedIn) {
+      // Firebase says user is logged out but our prefs say logged in
+      // Try automatic re-login
+      try {
+        final user = await _authService.attemptAutoLogin();
+        if (user != null) {
+          // Auto-login succeeded, update state if needed
+          if (_uid != user.uid) {
+            await setUid(user.uid);
+            await setUserEmail(user.email ?? '');
+            
+            if (user.displayName != null && user.displayName!.isNotEmpty) {
+              await setUserFullName(user.displayName!);
+            }
+          }
+          return; // Successfully restored session
+        }
+      } catch (e) {
+        debugPrint('Failed to restore session: $e');
+      }
+      
+      // If auto-login fails, reset logged-in state
+      await setLoggedIn(false);
+      await setUid('');
+      await setUserEmail('');
+      await setUserFullName('');
     }
   }
   
@@ -188,7 +241,7 @@ class UserState {
   // Log out user
   Future<void> logout() async {
     try {
-      await _authService.signOut();
+      await _authService.signOut(); // This now also clears stored credentials
       await setLoggedIn(false);
       await setUid('');
       await setUserEmail('');
@@ -277,12 +330,16 @@ class UserState {
   // User login
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
+      // Set persistence mode to ensure login persists across app restarts
+      await _authService.setPersistence();
+      
       final user = await _authService.signInWithEmailAndPassword(
         email,
         password,
       );
       
       if (user != null) {
+        // Save state to local storage for persistence
         await setLoggedIn(true);
         await setUid(user.uid);
         await setUserEmail(user.email ?? '');
@@ -298,6 +355,17 @@ class UserState {
             final refreshedUser = _authService.currentUser;
             if (refreshedUser?.displayName != null && refreshedUser!.displayName!.isNotEmpty) {
               await setUserFullName(refreshedUser.displayName!);
+            } else {
+              // Try to get display name from Firestore
+              final doc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .get();
+                  
+              if (doc.exists && doc.data()?['displayName'] != null) {
+                final firestoreDisplayName = doc.data()!['displayName'] as String;
+                await setUserFullName(firestoreDisplayName);
+              }
             }
           } catch (e) {
             debugPrint('Error refreshing user data: $e');

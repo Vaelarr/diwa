@@ -327,11 +327,10 @@ class _GameManagerState extends State<GameManager> {
 
   Scaffold _buildGameSelectionScreen(bool isTablet) {
     // Define game options with progress data from Firebase
-    final gameOptions = [
-      {
+    final gameOptions = [      {
         'title': widget.language == 'Filipino' ? 'Laro ng Depinisyon' : 'Definition Game',
         'icon': Icons.menu_book,
-        'color': Colors.purple,
+        'color': Colors.brown,
         'route': () => DefinitionGame(language: widget.language),
         'description': widget.language == 'Filipino'
             ? 'Piliin ang tamang salin batay sa depinisyon.'
